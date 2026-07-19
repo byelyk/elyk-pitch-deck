@@ -1,5 +1,5 @@
-import { FONT_PAIRS } from './defaults'
-import { Group, Field, Area, ColorField, ImageDrop, ListEditor, MetricEditor, Slider } from './ui'
+import { FONT_PAIRS, THEMES } from './defaults'
+import { Group, Field, Area, ColorField, ImageDrop, ListEditor, MetricEditor, Slider, Toggle } from './ui'
 
 /* Per-slide background photo controls (photo + blur + color-mix) */
 function BgControls({ deck, onChange, slideId }) {
@@ -43,14 +43,29 @@ function BgControls({ deck, onChange, slideId }) {
   )
 }
 
+/* Include / exclude this slide from the deck */
+function IncludeToggle({ deck, onChange, slideId }) {
+  const hidden = deck.hidden || []
+  const included = !hidden.includes(slideId)
+  const toggle = (on) =>
+    onChange({ ...deck, hidden: on ? hidden.filter((x) => x !== slideId) : [...hidden, slideId] })
+  return (
+    <div className="mb-4">
+      <Toggle label={included ? 'Included in this deck' : 'Hidden from this deck'} checked={included} onChange={toggle} />
+    </div>
+  )
+}
+
 export default function Controls({ deck, onChange, slideId }) {
   const brand = (key, val) => onChange({ ...deck, brand: { ...deck.brand, [key]: val } })
   const asset = (key, val) => onChange({ ...deck, assets: { ...deck.assets, [key]: val } })
   const field = (section, key, val) => onChange({ ...deck, [section]: { ...deck[section], [key]: val } })
+  const applyTheme = (t) =>
+    onChange({ ...deck, brand: { ...deck.brand, primary: t.primary, secondary: t.secondary, headingColor: t.heading, textColor: t.text } })
 
   return (
     <div>
-      {/* ---------- GLOBAL BRAND (always visible) ---------- */}
+      {/* ---------- GLOBAL BRAND ---------- */}
       <Group title="Brand & Client">
         <Field label="Your agency name" value={deck.brand.agencyName} onChange={(v) => brand('agencyName', v)} />
         <Field label="Client name" value={deck.brand.clientName} onChange={(v) => brand('clientName', v)} />
@@ -61,30 +76,50 @@ export default function Controls({ deck, onChange, slideId }) {
         </div>
       </Group>
 
-      <Group title="Style">
+      <Group title="Theme presets">
+        <div className="grid grid-cols-2 gap-2">
+          {THEMES.map((t) => {
+            const active = deck.brand.primary.toLowerCase() === t.primary.toLowerCase()
+              && deck.brand.secondary.toLowerCase() === t.secondary.toLowerCase()
+            return (
+              <button key={t.name} onClick={() => applyTheme(t)}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 border transition"
+                      style={{ background: active ? '#26262c' : '#171719', borderColor: active ? '#55555f' : '#2a2a31' }}>
+                <span className="flex -space-x-1">
+                  <span className="h-4 w-4 rounded-full border border-black/30" style={{ background: t.secondary }} />
+                  <span className="h-4 w-4 rounded-full border border-black/30" style={{ background: t.primary }} />
+                </span>
+                <span className="text-[12px]" style={{ color: active ? '#fff' : '#b6b6c0' }}>{t.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      </Group>
+
+      <Group title="Colors">
         <ColorField label="Primary (accent)" value={deck.brand.primary} onChange={(v) => brand('primary', v)} />
         <ColorField label="Background" value={deck.brand.secondary} onChange={(v) => brand('secondary', v)} />
         <ColorField label="Heading text" value={deck.brand.headingColor || '#FFFFFF'} onChange={(v) => brand('headingColor', v)} />
         <ColorField label="Body text" value={deck.brand.textColor || '#E9E9EF'} onChange={(v) => brand('textColor', v)} />
-        <div>
-          <span className="block text-[12px] text-neutral-400 mb-1.5">Font pairing</span>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(FONT_PAIRS).map(([key, p]) => (
-              <button
-                key={key}
-                onClick={() => brand('fontPair', key)}
-                className="rounded-lg px-3 py-2 text-[13px] text-left border transition"
-                style={{
-                  fontFamily: p.head,
-                  background: deck.brand.fontPair === key ? '#26262c' : '#171719',
-                  borderColor: deck.brand.fontPair === key ? '#55555f' : '#2a2a31',
-                  color: deck.brand.fontPair === key ? '#fff' : '#b6b6c0',
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+      </Group>
+
+      <Group title="Typography">
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(FONT_PAIRS).map(([key, p]) => (
+            <button
+              key={key}
+              onClick={() => brand('fontPair', key)}
+              className="rounded-lg px-3 py-2 text-[13px] text-left border transition truncate"
+              style={{
+                fontFamily: p.head,
+                background: deck.brand.fontPair === key ? '#26262c' : '#171719',
+                borderColor: deck.brand.fontPair === key ? '#55555f' : '#2a2a31',
+                color: deck.brand.fontPair === key ? '#fff' : '#b6b6c0',
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
         <p className="text-[11px] text-neutral-500 leading-relaxed">
           Tip: in any text field, wrap words in *asterisks* to highlight them in your primary color —
@@ -97,7 +132,8 @@ export default function Controls({ deck, onChange, slideId }) {
       {/* ---------- PER-SLIDE ---------- */}
       {slideId === 'vision' && (
         <>
-          <Group title="Slide 1 · The Vision">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="vision" />
+          <Group title="Slide · The Vision">
             <Field label="Kicker" value={deck.vision.kicker} onChange={(v) => field('vision', 'kicker', v)} />
             <Area label="Headline" rows={3} value={deck.vision.headline} onChange={(v) => field('vision', 'headline', v)} />
             <Area label="Subtitle" rows={3} value={deck.vision.subtitle} onChange={(v) => field('vision', 'subtitle', v)} />
@@ -107,9 +143,35 @@ export default function Controls({ deck, onChange, slideId }) {
         </>
       )}
 
+      {slideId === 'team' && (
+        <>
+          <IncludeToggle deck={deck} onChange={onChange} slideId="team" />
+          <Group title="Slide · Who We Are">
+            <Field label="Kicker" value={deck.team.kicker} onChange={(v) => field('team', 'kicker', v)} />
+            <Area label="Headline" rows={2} value={deck.team.headline} onChange={(v) => field('team', 'headline', v)} />
+            <Area label="Who we are (blurb)" rows={4} value={deck.team.blurb} onChange={(v) => field('team', 'blurb', v)} />
+            <MetricEditor label="Metrics (creators, views, followers…)" items={deck.team.metrics} onChange={(v) => field('team', 'metrics', v)} />
+            <span className="block text-[12px] text-neutral-400 mt-1">Creators (photo + name + handle)</span>
+            {deck.team.creators.map((c, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1.3fr] gap-3 items-start">
+                <ImageDrop value={deck.assets[`creator${i + 1}`]} onChange={(v) => asset(`creator${i + 1}`, v)} aspect="1/1" />
+                <div className="space-y-2">
+                  <Field label={`Name ${i + 1}`} value={c.name}
+                         onChange={(v) => field('team', 'creators', deck.team.creators.map((x, idx) => (idx === i ? { ...x, name: v } : x)))} />
+                  <Field label="Handle" value={c.handle}
+                         onChange={(v) => field('team', 'creators', deck.team.creators.map((x, idx) => (idx === i ? { ...x, handle: v } : x)))} />
+                </div>
+              </div>
+            ))}
+          </Group>
+          <BgControls deck={deck} onChange={onChange} slideId="team" />
+        </>
+      )}
+
       {slideId === 'blueprint' && (
         <>
-          <Group title="Slide 2 · Mini-Blueprint">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="blueprint" />
+          <Group title="Slide · Mini-Blueprint">
             <Area label="Intro line" rows={2} value={deck.blueprint.intro} onChange={(v) => field('blueprint', 'intro', v)} />
             <MetricEditor label="Current metrics (where they are)" items={deck.blueprint.current} onChange={(v) => field('blueprint', 'current', v)} />
             <MetricEditor label="Target metrics (the market)" items={deck.blueprint.target} onChange={(v) => field('blueprint', 'target', v)} />
@@ -124,7 +186,8 @@ export default function Controls({ deck, onChange, slideId }) {
 
       {slideId === 'strategy' && (
         <>
-          <Group title="Slide 3 · The Strategy">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="strategy" />
+          <Group title="Slide · The Strategy">
             <Field label="Kicker" value={deck.strategy.kicker} onChange={(v) => field('strategy', 'kicker', v)} />
             <Area label="Overview" rows={5} value={deck.strategy.overview} onChange={(v) => field('strategy', 'overview', v)} />
             <span className="block text-[12px] text-neutral-400 mt-1">Mood board (4 tiles)</span>
@@ -140,9 +203,55 @@ export default function Controls({ deck, onChange, slideId }) {
         </>
       )}
 
+      {slideId === 'visionBoard' && (
+        <>
+          <IncludeToggle deck={deck} onChange={onChange} slideId="visionBoard" />
+          <Group title="Slide · Vision Board">
+            <Field label="Kicker" value={deck.visionBoard.kicker} onChange={(v) => field('visionBoard', 'kicker', v)} />
+            <Area label="Headline" rows={2} value={deck.visionBoard.headline} onChange={(v) => field('visionBoard', 'headline', v)} />
+            <Area label="Intro" rows={2} value={deck.visionBoard.intro} onChange={(v) => field('visionBoard', 'intro', v)} />
+            <Area label="Where your brand fits (callout)" rows={3} value={deck.visionBoard.brandFit} onChange={(v) => field('visionBoard', 'brandFit', v)} />
+            <span className="block text-[12px] text-neutral-400 mt-1">Board images (6 tiles)</span>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="grid grid-cols-[1fr_1.2fr] gap-3 items-end">
+                <ImageDrop value={deck.assets[`vb${i + 1}`]} onChange={(v) => asset(`vb${i + 1}`, v)} aspect="1/1" />
+                <Field label={`Caption ${i + 1}`} value={deck.visionBoard.captions[i]}
+                       onChange={(v) => field('visionBoard', 'captions', deck.visionBoard.captions.map((c, idx) => (idx === i ? v : c)))} />
+              </div>
+            ))}
+          </Group>
+          <BgControls deck={deck} onChange={onChange} slideId="visionBoard" />
+        </>
+      )}
+
+      {slideId === 'campaignIdeas' && (
+        <>
+          <IncludeToggle deck={deck} onChange={onChange} slideId="campaignIdeas" />
+          <Group title="Slide · Campaign Ideas">
+            <Field label="Kicker" value={deck.campaignIdeas.kicker} onChange={(v) => field('campaignIdeas', 'kicker', v)} />
+            <Area label="Headline" rows={2} value={deck.campaignIdeas.headline} onChange={(v) => field('campaignIdeas', 'headline', v)} />
+            <Field label="Intro line" value={deck.campaignIdeas.intro} onChange={(v) => field('campaignIdeas', 'intro', v)} />
+            {deck.campaignIdeas.ideas.map((idea, i) => (
+              <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-3">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Idea {i + 1}</span>
+                <ImageDrop label="Image (optional)" value={deck.assets[`ci${i + 1}`]} onChange={(v) => asset(`ci${i + 1}`, v)} />
+                <Field label="Title" value={idea.title}
+                       onChange={(v) => field('campaignIdeas', 'ideas', deck.campaignIdeas.ideas.map((x, idx) => (idx === i ? { ...x, title: v } : x)))} />
+                <Field label="Format tag (e.g. TikTok · Reels)" value={idea.format}
+                       onChange={(v) => field('campaignIdeas', 'ideas', deck.campaignIdeas.ideas.map((x, idx) => (idx === i ? { ...x, format: v } : x)))} />
+                <Area label="Description" rows={3} value={idea.desc}
+                      onChange={(v) => field('campaignIdeas', 'ideas', deck.campaignIdeas.ideas.map((x, idx) => (idx === i ? { ...x, desc: v } : x)))} />
+              </div>
+            ))}
+          </Group>
+          <BgControls deck={deck} onChange={onChange} slideId="campaignIdeas" />
+        </>
+      )}
+
       {slideId === 'caseStudies' && (
         <>
-          <Group title="Slide 4 · Case Studies">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="caseStudies" />
+          <Group title="Slide · Case Studies">
             <Field label="Intro line" value={deck.caseStudies.intro} onChange={(v) => field('caseStudies', 'intro', v)} />
             {deck.caseStudies.items.map((c, i) => (
               <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-3">
@@ -163,7 +272,8 @@ export default function Controls({ deck, onChange, slideId }) {
 
       {slideId === 'deliverables' && (
         <>
-          <Group title="Slide 5 · Deliverables">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="deliverables" />
+          <Group title="Slide · Deliverables">
             <ListEditor label="Value-stacked deliverables" items={deck.deliverables.items}
                         onChange={(v) => field('deliverables', 'items', v)} placeholder="e.g. 30 assets × 3 platforms = 90 touchpoints" />
             <Area label="Lead-generation setup" rows={4} value={deck.deliverables.leadGen} onChange={(v) => field('deliverables', 'leadGen', v)} />
@@ -174,7 +284,8 @@ export default function Controls({ deck, onChange, slideId }) {
 
       {slideId === 'process' && (
         <>
-          <Group title="Slide 6 · How We Work">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="process" />
+          <Group title="Slide · How We Work">
             <Field label="Kicker" value={deck.process.kicker} onChange={(v) => field('process', 'kicker', v)} />
             {deck.process.steps.map((st, i) => (
               <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-2.5">
@@ -200,7 +311,8 @@ export default function Controls({ deck, onChange, slideId }) {
 
       {slideId === 'investment' && (
         <>
-          <Group title="Slide 7 · The Investment">
+          <IncludeToggle deck={deck} onChange={onChange} slideId="investment" />
+          <Group title="Slide · The Investment">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Retainer price" value={deck.investment.price} onChange={(v) => field('investment', 'price', v)} />
               <Field label="Cadence" value={deck.investment.cadence} onChange={(v) => field('investment', 'cadence', v)} />

@@ -1,6 +1,6 @@
-# ELYK STUDIO — Pitch Deck Maker
+# ELYK STUDIO — Pitch Deck & Media Kit Maker
 
-A React app for generating, customizing, and exporting high-converting **7-slide client pitch decks** for the agency. Split-screen: editing controls on the left, a live real-time slide preview on the right.
+A React app for generating, customizing, and exporting two kinds of documents — **client pitch decks** (for the agency) and **creator media kits** (for individual creators). Split-screen: editing controls on the left, a live real-time preview on the right. Switch document type from the **top-left toggle (Pitch Deck ⇄ Media Kit)**; each saved doc remembers its type and they live side by side in the doc manager.
 
 ## The 7 slides
 1. **The Vision** — the hook (headline + client lockup)
@@ -10,6 +10,9 @@ A React app for generating, customizing, and exporting high-converting **7-slide
 5. **Deliverables** — perceived value (value-stacked bullets + lead-gen setup)
 6. **How We Work** — logistics (3–4 step timeline)
 7. **The Investment** — pricing + next-steps CTA
+
+## The media kit (12 pages)
+For creators pitching brands: **Cover** (photo, niches, links + QR) · **The Numbers** (per-platform followers, reach, engagement) · **Audience** (gender/age/locations/interests) · **Content Style** · **Short-Form (9:16)** gallery · **Long-Form (16:9)** gallery · **Brand Partners** · **Testimonials** · **Made For You** (bespoke 9:16 + 16:9 ideas for the specific brand) · **Collab Menu** · **Rates** · **Contact & PR** (email, links, PO box / shipping address). Social links are clickable in-app and in PDF, with **QR codes** so they survive the image-based PowerPoint export.
 
 ## Run it
 
@@ -33,15 +36,16 @@ Everything is editable live in the left sidebar — brand name, client name, log
 
 To change the *default* template copy that loads for a brand-new deck, edit **`src/defaults.js`**.
 
-## Exporting — two options
-**Export Slides (.pptx)** — downloads a real PowerPoint file that opens in PowerPoint, Keynote, or Google Slides. Each slide is captured pixel-perfect with the real fonts embedded. Takes ~30–60 seconds (the button shows a spinner) — the page stays usable while it runs.
+## Presenting & exporting
+**Present** — fullscreen slideshow for pitching live on a call. Arrow keys / click to advance, Esc to exit. Hidden slides are skipped.
 
-**Export PDF** — opens the browser print dialog:
-- **Destination:** Save as PDF
-- **Layout:** Landscape
-- **More settings → Background graphics:** ON (so colors/backgrounds print)
+**Export PDF** — one click, downloads a ready-to-send PDF. No print dialog, no settings.
 
-Both export all 7 slides in 16:9 landscape.
+**Export Slides (.pptx)** — downloads a real PowerPoint file that opens in PowerPoint, Keynote, or Google Slides. Each slide is captured pixel-perfect with the real fonts embedded. Larger docs take ~30–60 seconds (the button shows a spinner) — the page stays usable while it runs.
+
+Exports include only the slides you've toggled on, in 16:9 landscape.
+
+**Image uploads** are automatically resized to a 2000px cap (visually lossless on slides) so browser storage stays roomy — an 8MB phone photo stores at a few hundred KB.
 
 ## Tech
 React + Vite + Tailwind CSS v4 + lucide-react. No backend — images are stored inline and the deck saves to `localStorage`.

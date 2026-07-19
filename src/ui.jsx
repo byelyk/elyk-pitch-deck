@@ -72,14 +72,42 @@ export function ColorField({ label, value, onChange }) {
   )
 }
 
-/* ---- Image upload (stores a data URL) ---- */
+/* ---- Image upload (stores a data URL) ----
+   Uploads are auto-resized to a 2000px cap and re-encoded (JPEG for photos,
+   PNG kept for logos/transparency). Slides only ever display ~1920px wide,
+   so this is visually lossless while keeping browser storage ~10x smaller. */
+const MAX_IMG_DIM = 2000
+function processImage(file, cb) {
+  const reader = new FileReader()
+  reader.onload = () => {
+    const src = reader.result
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, MAX_IMG_DIM / Math.max(img.width, img.height))
+      // already small enough → keep the original bytes untouched
+      if (scale === 1 && file.size < 800 * 1024) return cb(src)
+      const c = document.createElement('canvas')
+      c.width = Math.max(1, Math.round(img.width * scale))
+      c.height = Math.max(1, Math.round(img.height * scale))
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+      const isPng = file.type === 'image/png' // preserve logo transparency
+      try {
+        cb(c.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.85))
+      } catch {
+        cb(src) // e.g. SVG or decode quirk — fall back to the original
+      }
+    }
+    img.onerror = () => cb(src)
+    img.src = src
+  }
+  reader.readAsDataURL(file)
+}
+
 export function ImageDrop({ label, value, onChange, aspect = '16/9' }) {
   const ref = useRef(null)
   const pick = (file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => onChange(reader.result)
-    reader.readAsDataURL(file)
+    processImage(file, onChange)
   }
   return (
     <div>
@@ -119,6 +147,28 @@ export function ImageDrop({ label, value, onChange, aspect = '16/9' }) {
         onChange={(e) => pick(e.target.files?.[0])}
       />
     </div>
+  )
+}
+
+/* ---- On/off toggle ---- */
+export function Toggle({ label, checked, onChange }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 border transition"
+      style={{
+        background: checked ? 'rgba(255,77,0,0.10)' : '#171719',
+        borderColor: checked ? 'rgba(255,77,0,0.45)' : '#2a2a31',
+      }}
+    >
+      <span className="text-[13px]" style={{ color: checked ? '#fff' : '#9a9aa4' }}>{label}</span>
+      <span className="relative inline-block shrink-0" style={{ width: 38, height: 22 }}>
+        <span className="absolute inset-0 rounded-full transition"
+              style={{ background: checked ? '#ff4d00' : '#3a3a42' }} />
+        <span className="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white transition-all"
+              style={{ left: checked ? 18 : 2 }} />
+      </span>
+    </button>
   )
 }
 
@@ -176,6 +226,44 @@ export function ListEditor({ label, items, onChange, placeholder = 'List item' }
         className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-neutral-300 hover:text-white rounded-md px-2.5 py-1.5 bg-neutral-800/70 hover:bg-neutral-700 transition"
       >
         <Plus size={13} /> Add item
+      </button>
+    </div>
+  )
+}
+
+/* ---- Editable label + URL rows (social links) ---- */
+export function LinkEditor({ label, items, onChange }) {
+  const update = (i, key, v) => onChange(items.map((it, idx) => (idx === i ? { ...it, [key]: v } : it)))
+  const remove = (i) => onChange(items.filter((_, idx) => idx !== i))
+  const add = () => onChange([...items, { label: '', url: '' }])
+  return (
+    <div>
+      {label && <span className="block text-[12px] text-neutral-400 mb-1.5">{label}</span>}
+      <div className="space-y-2">
+        {items.map((it, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              value={it.label}
+              placeholder="Label"
+              onChange={(e) => update(i, 'label', e.target.value)}
+              className="w-24 rounded-lg bg-neutral-900 border border-neutral-800 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-neutral-600"
+            />
+            <input
+              value={it.url}
+              placeholder="https://…"
+              onChange={(e) => update(i, 'url', e.target.value)}
+              className="flex-1 rounded-lg bg-neutral-900 border border-neutral-800 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-neutral-600"
+            />
+            <button onClick={() => remove(i)}
+                    className="shrink-0 grid place-items-center h-7 w-7 rounded-md text-neutral-500 hover:text-red-400 hover:bg-neutral-800 transition" title="Remove">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={add}
+              className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-neutral-300 hover:text-white rounded-md px-2.5 py-1.5 bg-neutral-800/70 hover:bg-neutral-700 transition">
+        <Plus size={13} /> Add link
       </button>
     </div>
   )

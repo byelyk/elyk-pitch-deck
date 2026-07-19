@@ -1,10 +1,10 @@
-import { FONT_PAIRS } from './defaults'
+import { FONT_PAIRS, SLIDES } from './defaults'
 import {
-  ArrowRight, Check, Plus, ImageIcon, TrendingUp, TrendingDown, Sparkles,
+  ArrowRight, Check, Plus, ImageIcon, TrendingUp, TrendingDown, Sparkles, Lightbulb,
 } from 'lucide-react'
 
 /* hex (#rgb / #rrggbb) -> rgba() string */
-function rgba(hex, a = 1) {
+export function rgba(hex, a = 1) {
   let h = (hex || '#000000').replace('#', '')
   if (h.length === 3) h = h.split('').map((c) => c + c).join('')
   const n = parseInt(h, 16)
@@ -12,14 +12,17 @@ function rgba(hex, a = 1) {
   return `rgba(${r}, ${g}, ${b}, ${a})`
 }
 
-/* Build the render context from the deck */
-function ctxFrom(deck) {
+/* Build the render context from the deck.
+   `chrome` = the color used for card fills / borders / hairlines. It follows
+   the heading color, so light + dark themes both keep readable panels. */
+export function ctxFrom(deck) {
   const pair = FONT_PAIRS[deck.brand.fontPair] || FONT_PAIRS['inter-roboto']
   return {
     primary: deck.brand.primary,
     secondary: deck.brand.secondary,
     heading: deck.brand.headingColor || '#FFFFFF',
     text: deck.brand.textColor || '#E9E9EF',
+    chrome: deck.brand.headingColor || '#FFFFFF',
     fontHead: pair.head,
     fontBody: pair.body,
     asset: (k) => deck.assets?.[k] || '',
@@ -27,7 +30,7 @@ function ctxFrom(deck) {
 }
 
 /* Render *word* segments in the primary color */
-function Accent({ text, ctx }) {
+export function Accent({ text, ctx }) {
   const parts = String(text ?? '').split(/\*([^*]+)\*/g)
   return parts.map((p, i) =>
     i % 2 ? <span key={i} style={{ color: ctx.primary }}>{p}</span> : <span key={i}>{p}</span>
@@ -35,20 +38,20 @@ function Accent({ text, ctx }) {
 }
 
 /* Image placeholder tile */
-function Img({ src, caption, ctx, icon: Icon = ImageIcon, className = '' }) {
+export function Img({ src, caption, ctx, icon: Icon = ImageIcon, className = '', rounded = 'rounded-2xl' }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl ${className}`}
-         style={{ background: rgba('#ffffff', 0.04), border: `1px solid ${rgba('#ffffff', 0.09)}` }}>
+    <div className={`relative overflow-hidden ${rounded} ${className}`}
+         style={{ background: rgba(ctx.chrome, 0.05), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
       {src ? (
         <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0 grid place-items-center" style={{ color: rgba(ctx.text, 0.28) }}>
-          <Icon size={30} strokeWidth={1.4} />
+          <Icon size={28} strokeWidth={1.4} />
         </div>
       )}
       {caption && (
         <div className="absolute inset-x-0 bottom-0 px-4 py-2.5 text-[13px] font-medium"
-             style={{ color: 'rgba(255,255,255,0.88)', background: 'linear-gradient(0deg, rgba(0,0,0,0.75), rgba(0,0,0,0))' }}>
+             style={{ color: 'rgba(255,255,255,0.9)', background: 'linear-gradient(0deg, rgba(0,0,0,0.78), rgba(0,0,0,0))' }}>
           {caption}
         </div>
       )}
@@ -56,7 +59,7 @@ function Img({ src, caption, ctx, icon: Icon = ImageIcon, className = '' }) {
   )
 }
 
-function Kicker({ children, ctx }) {
+export function Kicker({ children, ctx }) {
   return (
     <span className="inline-flex items-center gap-2 text-[14px] font-semibold uppercase"
           style={{ color: ctx.primary, letterSpacing: '0.22em', fontFamily: ctx.fontBody }}>
@@ -66,8 +69,9 @@ function Kicker({ children, ctx }) {
   )
 }
 
-/* Shared shell: background (color / photo mix) + brand row + slide number + footer */
-function Shell({ deck, ctx, n, id, children, pad = 72 }) {
+/* Shared shell: background (color / photo mix) + brand row + slide number + footer.
+   Slide number + total are derived from the visible (non-hidden) slide order. */
+function Shell({ deck, ctx, id, children, pad = 72 }) {
   const { asset } = ctx
   const bgImg = asset('bg_' + id)
   const bg = deck.backgrounds?.[id] || {}
@@ -76,6 +80,13 @@ function Shell({ deck, ctx, n, id, children, pad = 72 }) {
   const overlay = bg.overlay ?? (styleMode === 'split' ? 35 : 65)
   const a = Math.min(1, Math.max(0, overlay / 100))
   const sec = ctx.secondary
+
+  const hidden = deck.hidden || []
+  const visible = SLIDES.filter((s) => !hidden.includes(s.id))
+  const posIn = visible.findIndex((s) => s.id === id)
+  const total = visible.length || 1
+  const pad2 = (x) => String(x).padStart(2, '0')
+  const numLabel = posIn >= 0 ? `${pad2(posIn + 1)} / ${pad2(total)}` : `— / ${pad2(total)}`
 
   return (
     <div className="absolute inset-0" style={{ background: sec, color: ctx.text, fontFamily: ctx.fontBody }}>
@@ -111,7 +122,7 @@ function Shell({ deck, ctx, n, id, children, pad = 72 }) {
       {/* footer: number + contact line */}
       <div className="absolute" style={{ left: pad, bottom: 30 }}>
         <span className="text-[12px] font-medium tracking-[0.16em]" style={{ color: rgba(ctx.text, 0.4) }}>
-          {String(n).padStart(2, '0')} / 07
+          {numLabel}
         </span>
       </div>
       {id !== 'vision' && deck.brand.footer && (
@@ -125,11 +136,11 @@ function Shell({ deck, ctx, n, id, children, pad = 72 }) {
   )
 }
 
-/* ======================= SLIDE 1 — VISION ======================= */
+/* ======================= SLIDE — VISION ======================= */
 function Vision({ deck, ctx }) {
   const v = deck.vision
   return (
-    <Shell deck={deck} ctx={ctx} n={1} id="vision">
+    <Shell deck={deck} ctx={ctx} id="vision">
       <div className="relative h-full flex flex-col justify-center max-w-[980px]" style={{ zIndex: 2 }}>
         <Kicker ctx={ctx}>{v.kicker}</Kicker>
         <h1 className="mt-6 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 74, lineHeight: 1.03, letterSpacing: '-0.02em', color: ctx.heading }}>
@@ -139,7 +150,6 @@ function Vision({ deck, ctx }) {
           {v.subtitle}
         </p>
       </div>
-      {/* client lockup, bottom-right */}
       <div className="absolute flex items-center gap-4" style={{ right: 72, bottom: 30, zIndex: 2 }}>
         <span className="text-[12px] uppercase tracking-[0.16em]" style={{ color: rgba(ctx.text, 0.45) }}>Prepared for</span>
         {ctx.asset('clientLogo')
@@ -150,11 +160,53 @@ function Vision({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 2 — BLUEPRINT ======================= */
+/* ======================= SLIDE — TEAM / WHO WE ARE ======================= */
+function Team({ deck, ctx }) {
+  const t = deck.team
+  return (
+    <Shell deck={deck} ctx={ctx} id="team">
+      <div className="h-full grid grid-cols-[1.05fr_0.95fr] gap-11">
+        {/* left: who we are + metrics */}
+        <div className="flex flex-col">
+          <Kicker ctx={ctx}>{t.kicker}</Kicker>
+          <h2 className="mt-5 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, lineHeight: 1.1, letterSpacing: '-0.015em', color: ctx.heading }}>
+            <Accent text={t.headline} ctx={ctx} />
+          </h2>
+          <p className="mt-4 text-[16px]" style={{ color: rgba(ctx.text, 0.68), lineHeight: 1.5 }}>{t.blurb}</p>
+          <div className="mt-auto grid grid-cols-2 gap-3.5 pt-6">
+            {(t.metrics || []).map((m, i) => (
+              <div key={i} className="rounded-2xl px-5 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+                <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 34, lineHeight: 1, color: ctx.primary }}>{m.value}</div>
+                <div className="mt-1.5 text-[12px] uppercase tracking-[0.12em]" style={{ color: rgba(ctx.text, 0.6) }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* right: creator cards */}
+        <div className="grid grid-cols-2 grid-rows-2 gap-4">
+          {(t.creators || []).slice(0, 4).map((c, i) => (
+            <div key={i} className="relative overflow-hidden rounded-2xl" style={{ background: rgba(ctx.chrome, 0.05), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+              {ctx.asset(`creator${i + 1}`)
+                ? <img src={ctx.asset(`creator${i + 1}`)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                : <div className="absolute inset-0 grid place-items-center" style={{ color: rgba(ctx.text, 0.28) }}><Sparkles size={24} strokeWidth={1.4} /></div>}
+              <div className="absolute inset-x-0 bottom-0 px-3.5 py-2.5"
+                   style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.82), rgba(0,0,0,0))' }}>
+                <div className="text-[14px] font-bold text-white leading-tight">{c.name}</div>
+                <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.72)' }}>{c.handle}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+/* ======================= SLIDE — BLUEPRINT ======================= */
 function MetricRow({ m, tone, ctx }) {
   const good = tone === 'target'
   return (
-    <div className="flex items-center justify-between py-2.5" style={{ borderBottom: `1px solid ${rgba('#ffffff', 0.08)}` }}>
+    <div className="flex items-center justify-between py-2.5" style={{ borderBottom: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
       <span className="text-[15px]" style={{ color: rgba(ctx.text, 0.65) }}>{m.label}</span>
       <span className="text-[22px] font-bold" style={{ fontFamily: ctx.fontHead, color: good ? ctx.primary : ctx.heading }}>{m.value}</span>
     </div>
@@ -163,14 +215,13 @@ function MetricRow({ m, tone, ctx }) {
 function Blueprint({ deck, ctx }) {
   const b = deck.blueprint
   return (
-    <Shell deck={deck} ctx={ctx} n={2} id="blueprint">
+    <Shell deck={deck} ctx={ctx} id="blueprint">
       <Kicker ctx={ctx}>The Mini-Blueprint</Kicker>
       <p className="mt-4 max-w-[820px] text-[19px]" style={{ color: rgba(ctx.text, 0.75), lineHeight: 1.45 }}>
         <Accent text={b.intro} ctx={ctx} />
       </p>
       <div className="mt-7 grid grid-cols-2 gap-7" style={{ height: 384 }}>
-        {/* current */}
-        <div className="rounded-2xl p-6 flex flex-col" style={{ background: rgba('#ffffff', 0.03), border: `1px solid ${rgba('#ffffff', 0.08)}` }}>
+        <div className="rounded-2xl p-6 flex flex-col" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown size={16} style={{ color: rgba(ctx.text, 0.5) }} />
             <span className="text-[13px] font-semibold uppercase tracking-[0.14em]" style={{ color: rgba(ctx.text, 0.5) }}>Where you are now</span>
@@ -178,7 +229,6 @@ function Blueprint({ deck, ctx }) {
           <div className="mb-4">{b.current.map((m, i) => <MetricRow key={i} m={m} tone="current" ctx={ctx} />)}</div>
           <Img src={ctx.asset('weakContent')} caption={b.weakCaption} ctx={ctx} className="flex-1 min-h-0" />
         </div>
-        {/* target */}
         <div className="relative rounded-2xl p-6 flex flex-col" style={{ background: rgba(ctx.primary, 0.06), border: `1px solid ${rgba(ctx.primary, 0.35)}` }}>
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp size={16} style={{ color: ctx.primary }} />
@@ -186,7 +236,6 @@ function Blueprint({ deck, ctx }) {
           </div>
           <div className="mb-4">{b.target.map((m, i) => <MetricRow key={i} m={m} tone="target" ctx={ctx} />)}</div>
           <Img src={ctx.asset('competitor')} caption={b.competitorCaption} ctx={ctx} className="flex-1 min-h-0" />
-          {/* arrow */}
           <div className="absolute grid place-items-center rounded-full" style={{ left: -34, top: '46%', width: 44, height: 44, background: ctx.primary, boxShadow: `0 8px 24px ${rgba(ctx.primary, 0.5)}` }}>
             <ArrowRight size={22} color="#fff" />
           </div>
@@ -196,12 +245,12 @@ function Blueprint({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 3 — STRATEGY ======================= */
+/* ======================= SLIDE — STRATEGY ======================= */
 function Strategy({ deck, ctx }) {
   const s = deck.strategy
   const keys = ['mood1', 'mood2', 'mood3', 'mood4']
   return (
-    <Shell deck={deck} ctx={ctx} n={3} id="strategy">
+    <Shell deck={deck} ctx={ctx} id="strategy">
       <div className="h-full grid grid-cols-[minmax(0,1fr)_1.15fr] gap-12">
         <div className="flex flex-col justify-center">
           <Kicker ctx={ctx}>{s.kicker}</Kicker>
@@ -222,20 +271,83 @@ function Strategy({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 4 — CASE STUDIES ======================= */
+/* ======================= SLIDE — VISION BOARD ======================= */
+function VisionBoard({ deck, ctx }) {
+  const vb = deck.visionBoard
+  const keys = ['vb1', 'vb2', 'vb3', 'vb4', 'vb5', 'vb6']
+  return (
+    <Shell deck={deck} ctx={ctx} id="visionBoard">
+      <div className="flex items-end justify-between gap-8">
+        <div>
+          <Kicker ctx={ctx}>{vb.kicker}</Kicker>
+          <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, letterSpacing: '-0.015em', color: ctx.heading }}>
+            <Accent text={vb.headline} ctx={ctx} />
+          </h2>
+        </div>
+        <p className="text-[15px] max-w-[360px] text-right pb-1" style={{ color: rgba(ctx.text, 0.6), lineHeight: 1.45 }}>{vb.intro}</p>
+      </div>
+      {/* collage */}
+      <div className="mt-6 grid grid-cols-3 grid-rows-2 gap-3.5" style={{ height: 348 }}>
+        {keys.map((k, i) => (
+          <Img key={k} src={ctx.asset(k)} caption={vb.captions?.[i]} ctx={ctx} icon={Sparkles} rounded="rounded-xl" />
+        ))}
+      </div>
+      {/* brand-fit callout */}
+      <div className="mt-4 flex items-start gap-3 rounded-2xl px-6 py-4" style={{ background: rgba(ctx.primary, 0.09), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
+        <span className="grid place-items-center rounded-full shrink-0 mt-0.5" style={{ width: 24, height: 24, background: ctx.primary }}>
+          <Plus size={15} color="#fff" strokeWidth={2.5} />
+        </span>
+        <p className="text-[16px]" style={{ color: rgba(ctx.text, 0.92), lineHeight: 1.45 }}>{vb.brandFit}</p>
+      </div>
+    </Shell>
+  )
+}
+
+/* ======================= SLIDE — CAMPAIGN IDEAS ======================= */
+function CampaignIdeas({ deck, ctx }) {
+  const ci = deck.campaignIdeas
+  return (
+    <Shell deck={deck} ctx={ctx} id="campaignIdeas">
+      <Kicker ctx={ctx}>{ci.kicker}</Kicker>
+      <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 42, letterSpacing: '-0.015em', color: ctx.heading }}>
+        <Accent text={ci.headline} ctx={ctx} />
+      </h2>
+      <p className="mt-2 text-[17px]" style={{ color: rgba(ctx.text, 0.6) }}>{ci.intro}</p>
+      <div className="mt-6 grid grid-cols-3 gap-6" style={{ height: 372 }}>
+        {(ci.ideas || []).slice(0, 3).map((idea, i) => (
+          <div key={i} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <div className="relative" style={{ height: 150 }}>
+              {ctx.asset(`ci${i + 1}`)
+                ? <img src={ctx.asset(`ci${i + 1}`)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                : <div className="absolute inset-0 grid place-items-center" style={{ background: rgba(ctx.primary, 0.08), color: ctx.primary }}><Lightbulb size={26} strokeWidth={1.5} /></div>}
+              <span className="absolute top-3 left-3 text-[11px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full"
+                    style={{ background: rgba(ctx.secondary, 0.72), color: ctx.primary }}>{idea.format}</span>
+            </div>
+            <div className="p-5 flex flex-col flex-1">
+              <div className="text-[20px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{idea.title}</div>
+              <p className="mt-2 text-[14px]" style={{ color: rgba(ctx.text, 0.66), lineHeight: 1.5 }}>{idea.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Shell>
+  )
+}
+
+/* ======================= SLIDE — CASE STUDIES ======================= */
 function CaseStudies({ deck, ctx }) {
   const cs = deck.caseStudies
   return (
-    <Shell deck={deck} ctx={ctx} n={4} id="caseStudies">
+    <Shell deck={deck} ctx={ctx} id="caseStudies">
       <Kicker ctx={ctx}>The Proof</Kicker>
       <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 44, letterSpacing: '-0.015em', color: ctx.heading }}>Case Studies</h2>
-      <p className="mt-2 text-[18px]" style={{ color: rgba(ctx.text, 0.62) }}>
+      <p className="mt-2 text-[18px]" style={{ color: rgba(ctx.text, 0.6) }}>
         <Accent text={cs.intro} ctx={ctx} />
       </p>
       <div className="mt-6 grid grid-cols-2 gap-7" style={{ height: 356 }}>
         {cs.items.map((c, i) => (
-          <div key={i} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: rgba('#ffffff', 0.03), border: `1px solid ${rgba('#ffffff', 0.08)}` }}>
-            <Img src={ctx.asset(`case${i + 1}Thumb`)} ctx={ctx} className="h-[170px] rounded-none" />
+          <div key={i} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <Img src={ctx.asset(`case${i + 1}Thumb`)} ctx={ctx} className="h-[170px]" rounded="" />
             <div className="p-6 flex flex-col flex-1">
               <span className="text-[19px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{c.client}</span>
               <span className="mt-1.5 text-[15px]" style={{ color: rgba(ctx.text, 0.62), lineHeight: 1.4 }}>{c.goal}</span>
@@ -250,18 +362,18 @@ function CaseStudies({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 5 — DELIVERABLES ======================= */
+/* ======================= SLIDE — DELIVERABLES ======================= */
 function Deliverables({ deck, ctx }) {
   const d = deck.deliverables
   return (
-    <Shell deck={deck} ctx={ctx} n={5} id="deliverables">
+    <Shell deck={deck} ctx={ctx} id="deliverables">
       <Kicker ctx={ctx}>{d.kicker}</Kicker>
       <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 44, letterSpacing: '-0.015em', color: ctx.heading }}>The Deliverables</h2>
       <div className="mt-6 grid grid-cols-[1.4fr_1fr] gap-8 items-start">
         <div className="space-y-3">
           {d.items.map((it, i) => (
             <div key={i} className="flex items-start gap-3.5 rounded-xl px-5 py-4"
-                 style={{ background: rgba('#ffffff', 0.03), border: `1px solid ${rgba('#ffffff', 0.08)}` }}>
+                 style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
               <span className="grid place-items-center rounded-full shrink-0" style={{ width: 26, height: 26, background: rgba(ctx.primary, 0.15), color: ctx.primary, marginTop: 1 }}>
                 <Check size={15} strokeWidth={2.5} />
               </span>
@@ -283,16 +395,16 @@ function Deliverables({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 6 — PROCESS ======================= */
+/* ======================= SLIDE — PROCESS ======================= */
 function Process({ deck, ctx }) {
   const p = deck.process
   const cols = p.steps.length
   return (
-    <Shell deck={deck} ctx={ctx} n={6} id="process">
+    <Shell deck={deck} ctx={ctx} id="process">
       <Kicker ctx={ctx}>{p.kicker}</Kicker>
       <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 44, letterSpacing: '-0.015em', color: ctx.heading }}>How We Work</h2>
       <div className="mt-14 relative">
-        <div className="absolute" style={{ top: 26, left: 26, right: 26, height: 2, background: rgba('#ffffff', 0.12) }} />
+        <div className="absolute" style={{ top: 26, left: 26, right: 26, height: 2, background: rgba(ctx.chrome, 0.14) }} />
         <div className="grid gap-6 relative" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
           {p.steps.map((st, i) => (
             <div key={i}>
@@ -310,11 +422,11 @@ function Process({ deck, ctx }) {
   )
 }
 
-/* ======================= SLIDE 7 — INVESTMENT ======================= */
+/* ======================= SLIDE — INVESTMENT ======================= */
 function Investment({ deck, ctx }) {
   const iv = deck.investment
   return (
-    <Shell deck={deck} ctx={ctx} n={7} id="investment">
+    <Shell deck={deck} ctx={ctx} id="investment">
       <div className="h-full grid grid-cols-[1fr_1fr] gap-12">
         <div className="flex flex-col justify-center">
           <Kicker ctx={ctx}>{iv.kicker}</Kicker>
@@ -332,7 +444,7 @@ function Investment({ deck, ctx }) {
           </div>
         </div>
         <div className="flex flex-col justify-center rounded-3xl p-9"
-             style={{ background: `linear-gradient(160deg, ${rgba(ctx.primary, 0.16)}, ${rgba('#ffffff', 0.02)})`, border: `1px solid ${rgba(ctx.primary, 0.35)}` }}>
+             style={{ background: `linear-gradient(160deg, ${rgba(ctx.primary, 0.16)}, ${rgba(ctx.chrome, 0.03)})`, border: `1px solid ${rgba(ctx.primary, 0.35)}` }}>
           <span className="text-[13px] font-semibold uppercase tracking-[0.18em]" style={{ color: ctx.primary }}>Next Steps</span>
           <p className="mt-4 font-semibold" style={{ fontFamily: ctx.fontHead, fontSize: 27, lineHeight: 1.32, color: ctx.heading }}>
             <Accent text={iv.cta} ctx={ctx} />
@@ -348,7 +460,8 @@ function Investment({ deck, ctx }) {
 }
 
 const MAP = {
-  vision: Vision, blueprint: Blueprint, strategy: Strategy, caseStudies: CaseStudies,
+  vision: Vision, team: Team, blueprint: Blueprint, strategy: Strategy,
+  visionBoard: VisionBoard, campaignIdeas: CampaignIdeas, caseStudies: CaseStudies,
   deliverables: Deliverables, process: Process, investment: Investment,
 }
 

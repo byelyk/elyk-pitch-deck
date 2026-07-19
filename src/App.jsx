@@ -1,22 +1,27 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { DEFAULT_DECK, SLIDES, FONT_PAIRS } from './defaults'
+import { DEFAULT_DECK, DEFAULT_KIT, SLIDES, KIT_SLIDES, FONT_PAIRS } from './defaults'
 import { Slide } from './slides'
+import { KitSlide } from './kit-slides'
 import Controls from './Controls'
+import KitControls from './kit-controls'
 import {
-  Download, RotateCcw, ChevronLeft, ChevronRight, Presentation,
-  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2,
+  Download, RotateCcw, ChevronLeft, ChevronRight, Presentation, IdCard,
+  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Play, X,
 } from 'lucide-react'
 
 const STORE_KEY = 'elyk-decks-v2'
 const OLD_KEY = 'elyk-deck-v1'
 
-/* Fill any missing keys from defaults so old saves never crash a slide */
+const baseFor = (type) => (type === 'mediakit' ? DEFAULT_KIT : DEFAULT_DECK)
+
+/* Fill any missing keys from the right defaults so old saves never crash a slide */
 function mergeDeck(saved) {
-  if (!saved || typeof saved !== 'object') return DEFAULT_DECK
-  const out = { ...DEFAULT_DECK, ...saved }
-  for (const k of Object.keys(DEFAULT_DECK)) {
-    if (DEFAULT_DECK[k] && typeof DEFAULT_DECK[k] === 'object' && !Array.isArray(DEFAULT_DECK[k])) {
-      out[k] = { ...DEFAULT_DECK[k], ...(saved[k] || {}) }
+  const base = baseFor(saved?.type)
+  if (!saved || typeof saved !== 'object') return base
+  const out = { ...base, ...saved, type: saved.type || 'pitch' }
+  for (const k of Object.keys(base)) {
+    if (base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) {
+      out[k] = { ...base[k], ...(saved[k] || {}) }
     }
   }
   return out
@@ -63,11 +68,25 @@ export default function App() {
   const [idx, setIdx] = useState(0)
   const [saveNote, setSaveNote] = useState('Autosaved')
   const [exporting, setExporting] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [present, setPresent] = useState(null) // null | index into visibleSlides
   const importRef = useRef(null)
 
   const active = store.decks[store.activeId]
   const deck = active.deck
-  const slideId = SLIDES[idx].id
+  const isKit = deck.type === 'mediakit'
+
+  // pick the right slide set + renderer + controls for this document type
+  const SLIDE_LIST = isKit ? KIT_SLIDES : SLIDES
+  const RenderSlide = isKit ? KitSlide : Slide
+  const ControlsComp = isKit ? KitControls : Controls
+  const safeIdx = Math.min(idx, SLIDE_LIST.length - 1)
+  const slideId = SLIDE_LIST[safeIdx].id
+
+  // visible (included) slides drive numbering + export
+  const hiddenIds = deck.hidden || []
+  const visibleSlides = SLIDE_LIST.filter((s) => !hiddenIds.includes(s.id))
+  const posMap = Object.fromEntries(visibleSlides.map((s, i) => [s.id, i + 1]))
 
   const setDeck = (next) =>
     setStore((s) => ({
@@ -92,13 +111,21 @@ export default function App() {
   const switchDeck = (id) => { setStore((s) => ({ ...s, activeId: id })); setIdx(0) }
   const renameDeck = (name) =>
     setStore((s) => ({ ...s, decks: { ...s.decks, [s.activeId]: { ...s.decks[s.activeId], name } } }))
-  const newDeck = () => {
+  const createDoc = (type) => {
     const id = newId()
-    setStore((s) => ({
-      activeId: id,
-      decks: { ...s.decks, [id]: { name: 'New Pitch', deck: DEFAULT_DECK, updatedAt: Date.now() } },
-    }))
+    const name = type === 'mediakit' ? 'New Media Kit' : 'New Pitch'
+    setStore((s) => ({ activeId: id, decks: { ...s.decks, [id]: { name, deck: baseFor(type), updatedAt: Date.now() } } }))
     setIdx(0)
+  }
+  const newDeck = () => createDoc(deck.type)
+  // Top-left switch: jump to the newest doc of that type, or start one
+  const switchType = (type) => {
+    if (deck.type === type) return
+    const match = Object.entries(store.decks)
+      .filter(([, d]) => (d.deck.type || 'pitch') === type)
+      .sort((a, b) => b[1].updatedAt - a[1].updatedAt)[0]
+    if (match) { setStore((s) => ({ ...s, activeId: match[0] })); setIdx(0) }
+    else createDoc(type)
   }
   const duplicateDeck = () => {
     const id = newId()
@@ -153,60 +180,65 @@ export default function App() {
     reader.readAsText(file)
   }
 
-  /* Export all 7 slides as a real PowerPoint file (each slide captured
-     as a full-bleed image, so it matches the preview exactly). */
+  /* ---- shared slide-capture pipeline (feeds PowerPoint + PDF exports) ---- */
   const fileBase = () => active.name.replace(/[^\w\- ]+/g, '').trim() || 'pitch-deck'
+  const withTimeout = (p, ms) =>
+    Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), ms))])
+
+  const captureSlides = async (format = 'png') => {
+    const { toPng, toJpeg, getFontEmbedCSS } = await import('html-to-image')
+    const nodes = [...document.querySelectorAll('.print-deck .slide-surface')]
+
+    // Fetch + inline the web fonts ONCE, then keep ONLY the two families this
+    // doc uses — embedding every loaded family makes the capture too heavy.
+    let fontEmbedCSS = ''
+    try {
+      const pair = FONT_PAIRS[deck.brand.fontPair] || FONT_PAIRS['inter-roboto']
+      const used = [...`${pair.head} ${pair.body}`.matchAll(/'([^']+)'/g)].map((m) => m[1])
+      const full = await withTimeout(getFontEmbedCSS(nodes[0]), 10000)
+      const chunks = full.split('@font-face')
+      fontEmbedCSS =
+        chunks[0] +
+        chunks
+          .slice(1)
+          .filter((c) => {
+            const fam = c.match(/font-family:\s*['"]?([^'";}]+)/)?.[1]?.trim()
+            return fam && used.includes(fam)
+          })
+          .map((c) => '@font-face' + c)
+          .join('')
+    } catch {
+      fontEmbedCSS = '' // fall back to capturing without embedded fonts
+    }
+
+    // Capture slides one at a time — parallel captures lock up the page.
+    const cap = format === 'jpeg' ? toJpeg : toPng
+    const opts = { width: 1280, height: 720, pixelRatio: 1.5, ...(format === 'jpeg' ? { quality: 0.92, backgroundColor: '#000' } : {}) }
+    const datas = []
+    for (const node of nodes) {
+      const data = await withTimeout(
+        cap(node, fontEmbedCSS ? { ...opts, fontEmbedCSS } : { ...opts, skipFonts: true }),
+        25000,
+      ).catch(() =>
+        // last resort: capture without fonts rather than failing the export
+        withTimeout(cap(node, { ...opts, skipFonts: true }), 15000),
+      )
+      datas.push(data)
+    }
+    return datas
+  }
+
+  /* Export as a real PowerPoint file (each slide a full-bleed image) */
   const exportPptx = async () => {
-    if (exporting) return
+    if (exporting || exportingPdf) return
     setExporting(true)
     try {
-      const [{ toPng, getFontEmbedCSS }, PptxGenJS] = await Promise.all([
-        import('html-to-image'),
-        import('pptxgenjs').then((m) => m.default),
-      ])
-      const nodes = [...document.querySelectorAll('.print-deck .slide-surface')]
+      const PptxGenJS = await import('pptxgenjs').then((m) => m.default)
+      const datas = await captureSlides('png')
       const pptx = new PptxGenJS()
       pptx.defineLayout({ name: 'WIDE_169', width: 13.333, height: 7.5 })
       pptx.layout = 'WIDE_169'
-
-      const withTimeout = (p, ms) =>
-        Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), ms))])
-
-      // Fetch + inline the web fonts ONCE, then keep ONLY the two families this
-      // deck uses — embedding all six loaded families makes the capture too
-      // heavy to rasterize.
-      let fontEmbedCSS = ''
-      try {
-        const pair = FONT_PAIRS[deck.brand.fontPair] || FONT_PAIRS['inter-roboto']
-        const used = [...`${pair.head} ${pair.body}`.matchAll(/'([^']+)'/g)].map((m) => m[1])
-        const full = await withTimeout(getFontEmbedCSS(nodes[0]), 10000)
-        const chunks = full.split('@font-face')
-        fontEmbedCSS =
-          chunks[0] +
-          chunks
-            .slice(1)
-            .filter((c) => {
-              const fam = c.match(/font-family:\s*['"]?([^'";}]+)/)?.[1]?.trim()
-              return fam && used.includes(fam)
-            })
-            .map((c) => '@font-face' + c)
-            .join('')
-      } catch {
-        fontEmbedCSS = '' // fall back to capturing without embedded fonts
-      }
-
-      // Capture slides one at a time — parallel captures lock up the page.
-      const opts = { width: 1280, height: 720, pixelRatio: 1.5 }
-      for (const node of nodes) {
-        const data = await withTimeout(
-          toPng(node, fontEmbedCSS ? { ...opts, fontEmbedCSS } : { ...opts, skipFonts: true }),
-          25000,
-        ).catch(() =>
-          // last resort: capture without fonts rather than failing the export
-          withTimeout(toPng(node, { ...opts, skipFonts: true }), 15000),
-        )
-        pptx.addSlide().addImage({ data, x: 0, y: 0, w: 13.333, h: 7.5 })
-      }
+      for (const data of datas) pptx.addSlide().addImage({ data, x: 0, y: 0, w: 13.333, h: 7.5 })
       await pptx.writeFile({ fileName: `${fileBase()}.pptx` })
     } catch (err) {
       console.error('PPTX export failed:', err)
@@ -215,18 +247,72 @@ export default function App() {
       setExporting(false)
     }
   }
-  // testing hook
-  useEffect(() => { window.__exportPptx = exportPptx })
+
+  /* One-click PDF — no print dialog, no settings to remember */
+  const exportPdf = async () => {
+    if (exporting || exportingPdf) return
+    setExportingPdf(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const datas = await captureSlides('jpeg')
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1280, 720], hotfixes: ['px_scaling'] })
+      datas.forEach((data, i) => {
+        if (i > 0) doc.addPage([1280, 720], 'landscape')
+        doc.addImage(data, 'JPEG', 0, 0, 1280, 720)
+      })
+      doc.save(`${fileBase()}.pdf`)
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      alert('PDF export failed — you can still print to PDF with Cmd+P.')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  // testing hooks
+  useEffect(() => { window.__exportPptx = exportPptx; window.__exportPdf = exportPdf })
+
+  /* ---- present mode (fullscreen slideshow) ---- */
+  const [winSize, setWinSize] = useState({ w: window.innerWidth, h: window.innerHeight })
+  useEffect(() => {
+    const f = () => setWinSize({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', f)
+    return () => window.removeEventListener('resize', f)
+  }, [])
+
+  const startPresent = () => {
+    const pos = visibleSlides.findIndex((s) => s.id === slideId)
+    setPresent(pos >= 0 ? pos : 0)
+    document.documentElement.requestFullscreen?.().catch(() => {})
+  }
+  const stopPresent = () => {
+    setPresent(null)
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  }
+  useEffect(() => {
+    if (present === null) return
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault(); setPresent((p) => Math.min(visibleSlides.length - 1, p + 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault(); setPresent((p) => Math.max(0, p - 1))
+      } else if (e.key === 'Escape') stopPresent()
+    }
+    const onFs = () => { if (!document.fullscreenElement) setPresent(null) }
+    window.addEventListener('keydown', onKey)
+    document.addEventListener('fullscreenchange', onFs)
+    return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fullscreenchange', onFs) }
+  }, [present, visibleSlides.length])
 
   // scale preview to fit
   const stageRef = useRef(null)
   const { w, h } = useSize(stageRef)
   const scale = w && h ? Math.min(w / 1280, h / 720) : 0
 
-  const go = (d) => setIdx((i) => Math.max(0, Math.min(SLIDES.length - 1, i + d)))
+  const go = (d) => setIdx((i) => Math.max(0, Math.min(SLIDE_LIST.length - 1, i + d)))
   const reset = () => {
-    if (confirm('Reset THIS deck to the starting template? (Other saved decks are untouched.)')) {
-      setDeck(DEFAULT_DECK); setIdx(0)
+    if (confirm('Reset THIS document to the starting template? (Other saved docs are untouched.)')) {
+      setDeck(baseFor(deck.type)); setIdx(0)
     }
   }
 
@@ -236,12 +322,27 @@ export default function App() {
     <div className="h-full flex flex-col bg-[var(--app-bg)]">
       {/* ============ TOP BAR ============ */}
       <header className="no-print flex items-center justify-between px-5 h-14 border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="grid place-items-center h-7 w-7 rounded-lg" style={{ background: deck.brand.primary }}>
+        <div className="flex items-center gap-3">
+          <span className="grid place-items-center h-7 w-7 rounded-lg shrink-0" style={{ background: deck.brand.primary }}>
             <Presentation size={16} color="#fff" />
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">Pitch Deck Maker</span>
-          <span className="text-[12px] text-neutral-500 hidden sm:inline">· {active.name}</span>
+          {/* document-type switch */}
+          <div className="flex items-center rounded-lg border border-neutral-700 overflow-hidden text-[12.5px] font-medium">
+            {[
+              ['pitch', 'Pitch Deck', Presentation],
+              ['mediakit', 'Media Kit', IdCard],
+            ].map(([type, label, Icon]) => {
+              const on = deck.type === type
+              return (
+                <button key={type} onClick={() => switchType(type)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 transition"
+                        style={{ background: on ? deck.brand.primary : 'transparent', color: on ? '#fff' : '#9a9aa4' }}>
+                  <Icon size={13} /> {label}
+                </button>
+              )
+            })}
+          </div>
+          <span className="text-[12px] text-neutral-500 hidden md:inline truncate max-w-[180px]">· {active.name}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-[11px] mr-1 hidden md:inline ${saveNote.startsWith('⚠') ? 'text-amber-400' : 'text-neutral-500'}`}>{saveNote}</span>
@@ -249,17 +350,23 @@ export default function App() {
                   className="inline-flex items-center gap-1.5 text-[13px] text-neutral-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-neutral-800 transition">
             <RotateCcw size={14} /> Reset
           </button>
-          <button onClick={exportPptx} disabled={exporting}
+          <button onClick={startPresent}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-lg text-neutral-100 bg-neutral-800 hover:bg-neutral-700 transition"
+                  title="Fullscreen slideshow — present live on a call. Arrow keys to navigate, Esc to exit.">
+            <Play size={14} /> Present
+          </button>
+          <button onClick={exportPptx} disabled={exporting || exportingPdf}
                   className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-lg text-neutral-100 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-60 transition"
                   title="Download a real PowerPoint file — opens in PowerPoint, Keynote, or Google Slides.">
             {exporting ? <Loader2 size={14} className="animate-spin" /> : <MonitorPlay size={14} />}
             {exporting ? 'Exporting…' : 'Export Slides'}
           </button>
-          <button onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-lg text-white transition"
+          <button onClick={exportPdf} disabled={exporting || exportingPdf}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-lg text-white disabled:opacity-60 transition"
                   style={{ background: deck.brand.primary }}
-                  title="Opens print dialog — choose Landscape, enable 'Background graphics', and Save as PDF.">
-            <Download size={14} /> Export PDF
+                  title="Downloads a ready-to-send PDF — no print dialog, no settings.">
+            {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {exportingPdf ? 'Exporting…' : 'Export PDF'}
           </button>
         </div>
       </header>
@@ -272,7 +379,7 @@ export default function App() {
           {/* ---- deck manager ---- */}
           <div className="mb-6">
             <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-2.5">
-              Your Decks — one per client
+              Your Docs — decks &amp; kits
             </h4>
             <select
               value={store.activeId}
@@ -281,21 +388,21 @@ export default function App() {
             >
               {Object.entries(store.decks)
                 .sort((a, b) => b[1].updatedAt - a[1].updatedAt)
-                .map(([id, d]) => <option key={id} value={id}>{d.name}</option>)}
+                .map(([id, d]) => <option key={id} value={id}>{(d.deck.type === 'mediakit' ? '🪪 ' : '📊 ') + d.name}</option>)}
             </select>
             <input
               value={active.name}
               onChange={(e) => renameDeck(e.target.value)}
-              placeholder="Deck name (e.g. Nike — Pitch)"
+              placeholder={isKit ? 'Kit name (e.g. Maya — Media Kit)' : 'Deck name (e.g. Nike — Pitch)'}
               className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-neutral-600 mb-2"
             />
             <div className="flex items-center gap-1.5">
-              <button onClick={newDeck} className={mgrBtn} title="New deck"><FilePlus2 size={15} /></button>
-              <button onClick={duplicateDeck} className={mgrBtn} title="Duplicate this deck (great starting point for a new client)"><Copy size={15} /></button>
-              <button onClick={deleteDeck} className={mgrBtn} title="Delete this deck"><Trash2 size={15} /></button>
+              <button onClick={newDeck} className={mgrBtn} title={isKit ? 'New media kit' : 'New pitch deck'}><FilePlus2 size={15} /></button>
+              <button onClick={duplicateDeck} className={mgrBtn} title="Duplicate this doc (great starting point for a new client)"><Copy size={15} /></button>
+              <button onClick={deleteDeck} className={mgrBtn} title="Delete this doc"><Trash2 size={15} /></button>
               <span className="mx-1 h-5 w-px bg-neutral-800" />
-              <button onClick={exportDeckFile} className={mgrBtn} title="Save this deck as a file (backup / share)"><FileDown size={15} /></button>
-              <button onClick={() => importRef.current?.click()} className={mgrBtn} title="Open a deck file"><FileUp size={15} /></button>
+              <button onClick={exportDeckFile} className={mgrBtn} title="Save this doc as a file (backup / share)"><FileDown size={15} /></button>
+              <button onClick={() => importRef.current?.click()} className={mgrBtn} title="Open a saved file"><FileUp size={15} /></button>
               <input ref={importRef} type="file" accept=".json,application/json" className="hidden"
                      onChange={(e) => { importDeckFile(e.target.files?.[0]); e.target.value = '' }} />
             </div>
@@ -303,26 +410,32 @@ export default function App() {
 
           <div className="mb-5 border-t border-neutral-800" />
 
-          <Controls deck={deck} onChange={setDeck} slideId={slideId} />
+          <ControlsComp deck={deck} onChange={setDeck} slideId={slideId} />
         </aside>
 
         {/* preview */}
         <main className="flex-1 min-w-0 flex flex-col">
           {/* slide tabs */}
           <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-neutral-800 overflow-x-auto scroll-thin">
-            {SLIDES.map((s, i) => {
-              const activeTab = i === idx
+            {SLIDE_LIST.map((s, i) => {
+              const activeTab = i === safeIdx
+              const isHidden = hiddenIds.includes(s.id)
               const Icon = s.icon
               return (
                 <button key={s.id} onClick={() => setIdx(i)}
+                        title={isHidden ? 'Hidden from this deck — click to view/re-enable' : s.tag}
                         className="group inline-flex items-center gap-2 shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-medium border transition"
                         style={{
                           background: activeTab ? '#26262c' : 'transparent',
                           borderColor: activeTab ? '#4a4a54' : 'transparent',
                           color: activeTab ? '#fff' : '#8a8a94',
+                          opacity: isHidden ? 0.42 : 1,
                         }}>
                   <Icon size={14} style={{ color: activeTab ? deck.brand.primary : '#6a6a74' }} />
-                  <span className="tabular-nums opacity-60">{s.n}</span> {s.name}
+                  {isHidden
+                    ? <EyeOff size={12} className="opacity-70" />
+                    : <span className="tabular-nums opacity-60">{posMap[s.id]}</span>}
+                  <span className={isHidden ? 'line-through' : ''}>{s.name}</span>
                 </button>
               )
             })}
@@ -335,35 +448,61 @@ export default function App() {
               <div style={{ width: 1280 * scale, height: 720 * scale }}
                    className="rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
                 <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-                  <Slide id={slideId} deck={deck} />
+                  <RenderSlide id={slideId} deck={deck} />
                 </div>
               </div>
             )}
 
             {/* prev / next */}
-            <button onClick={() => go(-1)} disabled={idx === 0}
+            <button onClick={() => go(-1)} disabled={safeIdx === 0}
                     className="absolute left-3 top-1/2 -translate-y-1/2 grid place-items-center h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 border border-white/10 disabled:opacity-25 transition">
               <ChevronLeft size={20} />
             </button>
-            <button onClick={() => go(1)} disabled={idx === SLIDES.length - 1}
+            <button onClick={() => go(1)} disabled={safeIdx === SLIDE_LIST.length - 1}
                     className="absolute right-3 top-1/2 -translate-y-1/2 grid place-items-center h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 border border-white/10 disabled:opacity-25 transition">
               <ChevronRight size={20} />
             </button>
 
             {/* caption */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[12px] text-neutral-500">
-              Slide {SLIDES[idx].n} of 7 — <span className="text-neutral-300">{SLIDES[idx].name}</span>
-              <span className="text-neutral-600"> · {SLIDES[idx].tag}</span>
+              {hiddenIds.includes(slideId)
+                ? <span className="text-amber-400/80">Hidden from this {isKit ? 'kit' : 'deck'}</span>
+                : <>{isKit ? 'Page' : 'Slide'} {posMap[slideId]} of {visibleSlides.length}</>}
+              {' — '}<span className="text-neutral-300">{SLIDE_LIST[safeIdx].name}</span>
+              <span className="text-neutral-600"> · {SLIDE_LIST[safeIdx].tag}</span>
             </div>
           </div>
         </main>
       </div>
 
-      {/* ============ PRINT-ONLY: all 7 slides ============ */}
+      {/* ============ PRESENT MODE (fullscreen slideshow) ============ */}
+      {present !== null && visibleSlides[present] && (() => {
+        const pScale = Math.min(winSize.w / 1280, winSize.h / 720)
+        return (
+          <div className="no-print fixed inset-0 z-50 bg-black grid place-items-center"
+               onClick={() => setPresent((p) => Math.min(visibleSlides.length - 1, p + 1))}>
+            <div style={{ width: 1280 * pScale, height: 720 * pScale }} className="overflow-hidden">
+              <div style={{ transform: `scale(${pScale})`, transformOrigin: 'top left' }}>
+                <RenderSlide id={visibleSlides[present].id} deck={deck} />
+              </div>
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); stopPresent() }}
+                    className="absolute top-4 right-4 grid place-items-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition"
+                    title="Exit (Esc)">
+              <X size={18} />
+            </button>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[12px] text-white/40 select-none">
+              {present + 1} / {visibleSlides.length} · arrows or click to advance · Esc to exit
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ============ PRINT / EXPORT: only included slides ============ */}
       <div className="print-deck">
-        {SLIDES.map((s) => (
+        {visibleSlides.map((s) => (
           <div key={s.id} className="print-page">
-            <Slide id={s.id} deck={deck} />
+            <RenderSlide id={s.id} deck={deck} />
           </div>
         ))}
       </div>
