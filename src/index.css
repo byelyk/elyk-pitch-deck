@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #0b0b0d;
+  --panel: #141417;
+  --panel-2: #1c1c21;
+  --border: #2a2a31;
+  --text: #ececf1;
+  --muted: #9a9aa6;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin custom scrollbars in the editor */
+.scroll-thin::-webkit-scrollbar { width: 10px; height: 10px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: #33333c; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+.scroll-thin::-webkit-scrollbar-thumb:hover { background: #44444f; background-clip: padding-box; }
+
+/* The 16:9 slide surface. Content is authored against a fixed 1280x720
+   coordinate space and scaled with a CSS variable so text/proportions
+   stay identical at any preview size or in print. */
+.slide-surface {
+  width: 1280px;
+  height: 720px;
+  transform-origin: top left;
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+
+/* ============ PRINT / PDF / PPTX EXPORT ============ */
+/* Kept rendered (offscreen) rather than display:none so the slides can
+   also be captured as images for the PowerPoint export. */
+.print-deck {
+  position: fixed;
+  left: -22000px;
+  top: 0;
+}
+
+@media print {
+  @page { size: 297mm 167mm; margin: 0; }   /* ~16:9 landscape page */
+  html, body, #root { height: auto; background: #fff; }
+  .no-print { display: none !important; }
+  .print-deck { position: static !important; left: auto !important; display: block !important; }
+  .print-page {
+    width: 297mm;
+    height: 167mm;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+  }
+  .print-page:last-child { page-break-after: auto; }
+  /* Each 1280x720 surface scaled to fill the print page width */
+  .print-page .slide-surface {
+    transform: scale(0.8759); /* 1122.5px (297mm@96dpi) / 1280 */
+  }
+}
