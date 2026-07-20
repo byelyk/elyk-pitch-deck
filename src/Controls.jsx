@@ -299,7 +299,7 @@ export default function Controls({ deck, onChange, slideId }) {
             <div className="flex gap-2">
               <button onClick={() => field('process', 'steps', [...deck.process.steps, { title: 'New Step', desc: '' }])}
                       className="text-xs px-2.5 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-200 disabled:opacity-40"
-                      disabled={deck.process.steps.length >= 4}>+ Add step</button>
+                      disabled={deck.process.steps.length >= 5}>+ Add step</button>
               <button onClick={() => field('process', 'steps', deck.process.steps.slice(0, -1))}
                       className="text-xs px-2.5 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-200 disabled:opacity-40"
                       disabled={deck.process.steps.length <= 3}>− Remove last</button>

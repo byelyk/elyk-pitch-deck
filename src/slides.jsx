@@ -399,21 +399,22 @@ function Deliverables({ deck, ctx }) {
 function Process({ deck, ctx }) {
   const p = deck.process
   const cols = p.steps.length
+  const tight = cols >= 5 // 5 columns → slightly smaller type so it stays clean
   return (
     <Shell deck={deck} ctx={ctx} id="process">
       <Kicker ctx={ctx}>{p.kicker}</Kicker>
       <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 44, letterSpacing: '-0.015em', color: ctx.heading }}>How We Work</h2>
       <div className="mt-14 relative">
         <div className="absolute" style={{ top: 26, left: 26, right: 26, height: 2, background: rgba(ctx.chrome, 0.14) }} />
-        <div className="grid gap-6 relative" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
+        <div className={`grid relative ${tight ? 'gap-4' : 'gap-6'}`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
           {p.steps.map((st, i) => (
             <div key={i}>
               <div className="grid place-items-center rounded-full text-[20px] font-bold"
                    style={{ width: 54, height: 54, background: ctx.primary, color: '#fff', fontFamily: ctx.fontHead, boxShadow: `0 8px 22px ${rgba(ctx.primary, 0.45)}` }}>
                 {i + 1}
               </div>
-              <div className="mt-6 text-[22px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{st.title}</div>
-              <p className="mt-2.5 text-[16px]" style={{ color: rgba(ctx.text, 0.65), lineHeight: 1.5 }}>{st.desc}</p>
+              <div className="mt-6 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: tight ? 19 : 22, color: ctx.heading }}>{st.title}</div>
+              <p className="mt-2.5" style={{ fontSize: tight ? 15 : 16, color: rgba(ctx.text, 0.65), lineHeight: 1.5 }}>{st.desc}</p>
             </div>
           ))}
         </div>
