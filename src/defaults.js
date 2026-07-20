@@ -72,9 +72,9 @@ export const DEFAULT_DECK = {
 
   team: {
     kicker: 'Who We Are',
-    headline: 'A *creator collective* that turns attention into outcomes',
+    headline: 'We put your brand *inside the culture* — not in front of it',
     blurb:
-      'We are a social-first studio of creators, editors, and strategists who live natively on TikTok, Reels, and Shorts. We do not guess what performs — we make it, every single day.',
+      'Elyk Studio is an organic, social-first collective of some of the biggest college creators in the nation. We reach Gen Z where they live — on campus and in the feed — spreading awareness, turning attention into leads, and creating content you can repurpose forever. That’s how you earn their trust.',
     metrics: [
       { label: 'Creators', value: '40+' },
       { label: 'Monthly Views', value: '85M' },
