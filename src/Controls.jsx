@@ -1,6 +1,12 @@
 import { FONT_PAIRS, THEMES } from './defaults'
 import { Group, Field, Area, ColorField, ImageDrop, ListEditor, MetricEditor, Slider, Toggle } from './ui'
 
+const STARTER_TIERS = [
+  { name: 'Bronze', listValue: '$24,500', price: '$15,000', cadence: '/ mo', save: 'Save ~39%', recommended: false, features: ['6 short-form videos', '1 long-form video', '10 story frames', 'Management & reporting'] },
+  { name: 'Silver', listValue: '$62,500', price: '$35,000', cadence: '/ mo', save: 'Save ~44%', recommended: true, features: ['15 short-form videos', '2 long-form videos', '25 story frames', '1 signature series', 'Whitelisting / ad rights'] },
+  { name: 'Gold', listValue: '$133,000', price: '$75,000', cadence: '/ mo', save: 'Save ~44%', recommended: false, features: ['28 short-form videos', '4 long-form videos', '45 story frames', 'Full flagship series', 'Category exclusivity'] },
+]
+
 /* Per-slide background photo controls (photo + blur + color-mix) */
 function BgControls({ deck, onChange, slideId }) {
   const bg = deck.backgrounds?.[slideId] || {}
@@ -313,12 +319,50 @@ export default function Controls({ deck, onChange, slideId }) {
         <>
           <IncludeToggle deck={deck} onChange={onChange} slideId="investment" />
           <Group title="Slide · The Investment">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Retainer price" value={deck.investment.price} onChange={(v) => field('investment', 'price', v)} />
-              <Field label="Cadence" value={deck.investment.cadence} onChange={(v) => field('investment', 'cadence', v)} />
-            </div>
-            <ListEditor label="What’s included" items={deck.investment.includes} onChange={(v) => field('investment', 'includes', v)} />
-            <Area label="Next steps (CTA)" rows={4} value={deck.investment.cta} onChange={(v) => field('investment', 'cta', v)} />
+            {(() => {
+              const iv = deck.investment
+              const tiers = iv.tiers || []
+              const on = tiers.length > 0
+              const setTiers = (v) => field('investment', 'tiers', v)
+              const updTier = (i, key, val) => setTiers(tiers.map((t, idx) => (idx === i ? { ...t, [key]: val } : t)))
+              return (
+                <>
+                  <Toggle label={on ? 'Pricing tiers (Bronze / Silver / Gold)' : 'Single price'}
+                          checked={on} onChange={(v) => setTiers(v ? STARTER_TIERS : [])} />
+                  {!on && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Retainer price" value={iv.price} onChange={(v) => field('investment', 'price', v)} />
+                        <Field label="Cadence" value={iv.cadence} onChange={(v) => field('investment', 'cadence', v)} />
+                      </div>
+                      <ListEditor label="What’s included" items={iv.includes} onChange={(v) => field('investment', 'includes', v)} />
+                    </>
+                  )}
+                  {on && (
+                    <>
+                      <Field label="Headline" value={iv.headline} onChange={(v) => field('investment', 'headline', v)} />
+                      {tiers.map((t, i) => (
+                        <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Tier {i + 1}</span>
+                            <Toggle label="Recommended" checked={!!t.recommended}
+                                    onChange={(v) => setTiers(tiers.map((x, idx) => ({ ...x, recommended: idx === i ? v : false })))} />
+                          </div>
+                          <Field label="Name" value={t.name} onChange={(v) => updTier(i, 'name', v)} />
+                          <div className="grid grid-cols-3 gap-2">
+                            <Field label="À-la-carte" value={t.listValue} onChange={(v) => updTier(i, 'listValue', v)} />
+                            <Field label="Price" value={t.price} onChange={(v) => updTier(i, 'price', v)} />
+                            <Field label="Save" value={t.save} onChange={(v) => updTier(i, 'save', v)} />
+                          </div>
+                          <ListEditor label="Includes" items={t.features || []} onChange={(v) => updTier(i, 'features', v)} />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <Area label="Bottom line / why it’s worth it" rows={3} value={iv.cta} onChange={(v) => field('investment', 'cta', v)} />
+                </>
+              )
+            })()}
           </Group>
           <BgControls deck={deck} onChange={onChange} slideId="investment" />
         </>

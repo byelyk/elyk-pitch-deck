@@ -426,6 +426,64 @@ function Process({ deck, ctx }) {
 /* ======================= SLIDE — INVESTMENT ======================= */
 function Investment({ deck, ctx }) {
   const iv = deck.investment
+  const tiers = iv.tiers || []
+
+  // ---- Tiered pricing layout (Bronze / Silver / Gold) ----
+  if (tiers.length) {
+    return (
+      <Shell deck={deck} ctx={ctx} id="investment">
+        <Kicker ctx={ctx}>{iv.kicker}</Kicker>
+        <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, letterSpacing: '-0.015em', color: ctx.heading }}>
+          <Accent text={iv.headline || 'The Investment'} ctx={ctx} />
+        </h2>
+        <div className="mt-5 grid grid-cols-3 gap-5" style={{ height: 388 }}>
+          {tiers.slice(0, 3).map((t, i) => {
+            const rec = !!t.recommended
+            return (
+              <div key={i} className="relative rounded-2xl px-6 pt-6 pb-5 flex flex-col"
+                   style={{
+                     background: rec ? rgba(ctx.primary, 0.1) : rgba(ctx.chrome, 0.04),
+                     border: `1px solid ${rec ? rgba(ctx.primary, 0.5) : rgba(ctx.chrome, 0.1)}`,
+                   }}>
+                {rec && (
+                  <span className="absolute -top-2.5 left-6 text-[11px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
+                        style={{ background: ctx.primary, color: '#fff' }}>Recommended</span>
+                )}
+                <div className="text-[14px] font-semibold uppercase tracking-[0.16em]" style={{ color: rec ? ctx.primary : rgba(ctx.text, 0.6) }}>{t.name}</div>
+                {t.listValue && (
+                  <div className="mt-2 text-[15px] line-through" style={{ color: rgba(ctx.text, 0.4) }}>{t.listValue}</div>
+                )}
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, lineHeight: 1, color: ctx.heading }}>{t.price}</span>
+                  {t.cadence && <span className="text-[14px] mb-1" style={{ color: rgba(ctx.text, 0.5) }}>{t.cadence}</span>}
+                </div>
+                {t.save && (
+                  <span className="mt-2.5 self-start text-[12px] font-semibold px-2.5 py-1 rounded-full"
+                        style={{ background: rgba(ctx.primary, 0.15), color: ctx.primary }}>{t.save}</span>
+                )}
+                <div className="mt-4 pt-4 space-y-2" style={{ borderTop: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+                  {(t.features || []).slice(0, 6).map((f, j) => (
+                    <div key={j} className="flex items-start gap-2.5" style={{ fontSize: 13.5, lineHeight: 1.35, color: rgba(ctx.text, 0.85) }}>
+                      <Check size={14} strokeWidth={2.5} style={{ color: ctx.primary, marginTop: 2, flexShrink: 0 }} /> {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {iv.cta && (
+          <div className="mt-5 pt-4 text-center" style={{ borderTop: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <p className="text-[17px] font-medium mx-auto max-w-[1000px]" style={{ color: rgba(ctx.text, 0.85), lineHeight: 1.4 }}>
+              <Accent text={iv.cta} ctx={ctx} />
+            </p>
+          </div>
+        )}
+      </Shell>
+    )
+  }
+
+  // ---- Single-price layout ----
   return (
     <Shell deck={deck} ctx={ctx} id="investment">
       <div className="h-full grid grid-cols-[1fr_1fr] gap-12">

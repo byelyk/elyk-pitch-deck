@@ -173,6 +173,7 @@ export const DEFAULT_DECK = {
 
   investment: {
     kicker: 'The Investment',
+    headline: 'The Investment',
     price: '$6,000',
     cadence: '/ month',
     includes: [
@@ -181,6 +182,7 @@ export const DEFAULT_DECK = {
       'Daily posting & scheduling',
       'Lead-gen funnel setup + monthly reporting',
     ],
+    tiers: [],
     cta: "Let's get your brand in the right rooms. Reserve your shoot day this month — we onboard 2 new brands per quarter.",
   },
 }
