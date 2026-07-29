@@ -6,7 +6,7 @@ import Controls from './Controls'
 import KitControls from './kit-controls'
 import {
   Download, RotateCcw, ChevronLeft, ChevronRight, Presentation, IdCard,
-  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Play, X,
+  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Eye, Play, X,
 } from 'lucide-react'
 
 const STORE_KEY = 'elyk-decks-v2'
@@ -309,6 +309,8 @@ export default function App() {
   const { w, h } = useSize(stageRef)
   const scale = w && h ? Math.min(w / 1280, h / 720) : 0
 
+  const toggleHidden = (id) =>
+    setDeck({ ...deck, hidden: hiddenIds.includes(id) ? hiddenIds.filter((x) => x !== id) : [...hiddenIds, id] })
   const go = (d) => setIdx((i) => Math.max(0, Math.min(SLIDE_LIST.length - 1, i + d)))
   const reset = () => {
     if (confirm('Reset THIS document to the starting template? (Other saved docs are untouched.)')) {
@@ -422,21 +424,27 @@ export default function App() {
               const isHidden = hiddenIds.includes(s.id)
               const Icon = s.icon
               return (
-                <button key={s.id} onClick={() => setIdx(i)}
-                        title={isHidden ? 'Hidden from this deck — click to view/re-enable' : s.tag}
-                        className="group inline-flex items-center gap-2 shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-medium border transition"
-                        style={{
-                          background: activeTab ? '#26262c' : 'transparent',
-                          borderColor: activeTab ? '#4a4a54' : 'transparent',
-                          color: activeTab ? '#fff' : '#8a8a94',
-                          opacity: isHidden ? 0.42 : 1,
-                        }}>
+                <div key={s.id}
+                     title={s.tag}
+                     className="group inline-flex items-center gap-1.5 shrink-0 rounded-lg pl-3 pr-1.5 py-1.5 text-[12.5px] font-medium border transition cursor-pointer"
+                     onClick={() => setIdx(i)}
+                     style={{
+                       background: activeTab ? '#26262c' : 'transparent',
+                       borderColor: activeTab ? '#4a4a54' : 'transparent',
+                       color: activeTab ? '#fff' : '#8a8a94',
+                       opacity: isHidden ? 0.5 : 1,
+                     }}>
                   <Icon size={14} style={{ color: activeTab ? deck.brand.primary : '#6a6a74' }} />
-                  {isHidden
-                    ? <EyeOff size={12} className="opacity-70" />
-                    : <span className="tabular-nums opacity-60">{posMap[s.id]}</span>}
+                  <span className="tabular-nums opacity-60">{isHidden ? '–' : posMap[s.id]}</span>
                   <span className={isHidden ? 'line-through' : ''}>{s.name}</span>
-                </button>
+                  <span role="button" tabIndex={0}
+                        title={isHidden ? 'Excluded from export — click to include' : 'Included — click to exclude from export'}
+                        onClick={(e) => { e.stopPropagation(); toggleHidden(s.id) }}
+                        className="ml-0.5 grid place-items-center h-5 w-5 rounded hover:bg-white/15 transition"
+                        style={{ color: isHidden ? '#e0a03a' : '#7a7a84' }}>
+                    {isHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </span>
+                </div>
               )
             })}
           </div>
