@@ -1,0 +1,293 @@
+import { BRIEF_SLIDES } from './defaults'
+import { rgba, ctxFrom, Accent, Kicker, Img } from './slides'
+import { Check, ImageIcon, ArrowRight } from 'lucide-react'
+
+/* Shell — brief numbering + top bar */
+function Shell({ deck, ctx, id, children, pad = 72 }) {
+  const { asset } = ctx
+  const bgImg = asset('bg_' + id)
+  const bg = deck.backgrounds?.[id] || {}
+  const styleMode = bg.style || (id === 'cover' ? 'split' : 'full')
+  const blur = bg.blur ?? 6
+  const overlay = bg.overlay ?? (styleMode === 'split' ? 35 : 65)
+  const a = Math.min(1, Math.max(0, overlay / 100))
+  const sec = ctx.secondary
+
+  const hidden = deck.hidden || []
+  const visible = BRIEF_SLIDES.filter((s) => !hidden.includes(s.id))
+  const posIn = visible.findIndex((s) => s.id === id)
+  const total = visible.length || 1
+  const pad2 = (x) => String(x).padStart(2, '0')
+  const numLabel = posIn >= 0 ? `${pad2(posIn + 1)} / ${pad2(total)}` : `— / ${pad2(total)}`
+
+  return (
+    <div className="absolute inset-0" style={{ background: sec, color: ctx.text, fontFamily: ctx.fontBody }}>
+      {bgImg && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <img src={bgImg} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ filter: `blur(${blur}px)`, transform: 'scale(1.1)' }} />
+          <div className="absolute inset-0" style={{
+            background: styleMode === 'split'
+              ? `linear-gradient(90deg, ${sec} 0%, ${rgba(sec, 0.96)} 30%, ${rgba(sec, Math.max(a, 0.12))} 68%, ${rgba(sec, Math.max(a - 0.12, 0))} 100%)`
+              : rgba(sec, a),
+          }} />
+        </div>
+      )}
+      <div className="absolute inset-0 pointer-events-none"
+           style={{ background: `radial-gradient(60% 55% at 82% 8%, ${rgba(ctx.primary, 0.14)} 0%, rgba(0,0,0,0) 60%)` }} />
+      <div className="absolute left-0 right-0 flex items-center justify-between" style={{ top: 34, paddingLeft: pad, paddingRight: pad, zIndex: 2 }}>
+        <div className="flex items-center gap-2.5">
+          {asset('agencyLogo')
+            ? <img src={asset('agencyLogo')} alt="" style={{ height: 26 }} className="object-contain" />
+            : <span className="text-[15px] font-bold tracking-[0.16em] uppercase" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{deck.brand.agencyName}</span>}
+        </div>
+        <span className="text-[12px] font-medium tracking-[0.18em] uppercase" style={{ color: rgba(ctx.text, 0.45) }}>
+          {deck.brand.clientName} · Creative Brief
+        </span>
+      </div>
+      <div className="absolute inset-0" style={{ padding: pad, paddingTop: 104 }}>{children}</div>
+      <div className="absolute" style={{ left: pad, bottom: 30 }}>
+        <span className="text-[12px] font-medium tracking-[0.16em]" style={{ color: rgba(ctx.text, 0.4) }}>{numLabel}</span>
+      </div>
+      {id !== 'cover' && deck.brand.footer && (
+        <div className="absolute" style={{ right: pad, bottom: 30 }}>
+          <span className="text-[12px] font-medium tracking-[0.1em]" style={{ color: rgba(ctx.text, 0.4) }}>{deck.brand.footer}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ===================== COVER ===================== */
+function Cover({ deck, ctx }) {
+  const c = deck.cover
+  return (
+    <Shell deck={deck} ctx={ctx} id="cover">
+      <div className="h-full grid grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+        <div style={{ zIndex: 2 }}>
+          <Kicker ctx={ctx}>{c.kicker}</Kicker>
+          <h1 className="mt-5 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 88, lineHeight: 0.98, letterSpacing: '-0.02em', color: ctx.heading }}>{c.title}</h1>
+          <p className="mt-6 max-w-[520px]" style={{ fontSize: 20, lineHeight: 1.5, color: rgba(ctx.text, 0.75) }}>
+            <Accent text={c.subtitle} ctx={ctx} />
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2.5">
+            {(c.chips || []).map((ch, i) => (
+              <span key={i} className="text-[13px] font-semibold rounded-full px-3.5 py-2"
+                    style={{ background: rgba(ctx.primary, 0.12), border: `1px solid ${rgba(ctx.primary, 0.35)}`, color: ctx.primary }}>{ch}</span>
+            ))}
+          </div>
+        </div>
+        <div className="relative w-full overflow-hidden rounded-3xl" style={{ height: 420, background: rgba(ctx.chrome, 0.05), border: `1px solid ${rgba(ctx.chrome, 0.12)}` }}>
+          {ctx.asset('brief_cover')
+            ? <img src={ctx.asset('brief_cover')} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            : <div className="absolute inset-0 grid place-items-center" style={{ color: rgba(ctx.text, 0.3) }}>
+                <div className="text-center"><ImageIcon size={30} strokeWidth={1.4} className="mx-auto" />
+                <div className="mt-2 text-[12px]">Series cover art / thumbnail</div></div>
+              </div>}
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+/* ===================== CONCEPT ===================== */
+function Concept({ deck, ctx }) {
+  const cc = deck.concept
+  return (
+    <Shell deck={deck} ctx={ctx} id="concept">
+      <div className="grid grid-cols-[1.1fr_0.9fr] gap-10">
+        <div>
+          <Kicker ctx={ctx}>{cc.kicker}</Kicker>
+          <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 34, lineHeight: 1.12, letterSpacing: '-0.015em', color: ctx.heading }}>
+            <Accent text={cc.headline} ctx={ctx} />
+          </h2>
+          <p className="mt-4 text-[15.5px]" style={{ color: rgba(ctx.text, 0.72), lineHeight: 1.55 }}>{cc.body}</p>
+        </div>
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2.5" style={{ color: rgba(ctx.text, 0.5) }}>{cc.thumbsLabel}</div>
+          <div className="space-y-3">
+            <Img src={ctx.asset('ct1')} ctx={ctx} className="h-[128px]" rounded="rounded-xl" />
+            <Img src={ctx.asset('ct2')} ctx={ctx} className="h-[128px]" rounded="rounded-xl" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 grid grid-cols-3 gap-5">
+        {(cc.points || []).slice(0, 3).map((p, i) => (
+          <div key={i} className="rounded-2xl px-5 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <div className="text-[16px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.primary }}>{p.title}</div>
+            <p className="mt-1.5 text-[13.5px]" style={{ color: rgba(ctx.text, 0.7), lineHeight: 1.45 }}>{p.desc}</p>
+          </div>
+        ))}
+      </div>
+    </Shell>
+  )
+}
+
+/* ===================== FORMAT ===================== */
+function Format({ deck, ctx }) {
+  const f = deck.format
+  return (
+    <Shell deck={deck} ctx={ctx} id="format">
+      <Kicker ctx={ctx}>{f.kicker}</Kicker>
+      <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 38, letterSpacing: '-0.015em', color: ctx.heading }}>
+        <Accent text={f.headline} ctx={ctx} />
+      </h2>
+      <div className="mt-6 grid grid-cols-3 gap-5">
+        {(f.steps || []).slice(0, 6).map((st, i) => (
+          <div key={i} className="rounded-2xl px-5 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <div className="flex items-center gap-2.5">
+              <span className="grid place-items-center rounded-full text-[13px] font-bold shrink-0"
+                    style={{ width: 28, height: 28, background: ctx.primary, color: '#fff', fontFamily: ctx.fontHead }}>{i + 1}</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full"
+                    style={{ background: rgba(ctx.primary, 0.12), color: ctx.primary }}>{st.tag}</span>
+            </div>
+            <div className="mt-3 text-[17px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{st.title}</div>
+            <p className="mt-1.5 text-[13px]" style={{ color: rgba(ctx.text, 0.68), lineHeight: 1.45 }}>{st.desc}</p>
+          </div>
+        ))}
+      </div>
+    </Shell>
+  )
+}
+
+/* ===================== INTEGRATION ===================== */
+function Integration({ deck, ctx }) {
+  const g = deck.integration
+  return (
+    <Shell deck={deck} ctx={ctx} id="integration">
+      <Kicker ctx={ctx}>{g.kicker}</Kicker>
+      <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 34, letterSpacing: '-0.015em', color: ctx.heading }}>
+        <Accent text={g.headline} ctx={ctx} />
+      </h2>
+      <div className="mt-5 grid grid-cols-[1.05fr_0.95fr] gap-9">
+        <div className="space-y-2.5">
+          {(g.placements || []).slice(0, 6).map((p, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5"
+                 style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+              <span className="grid place-items-center rounded-full shrink-0" style={{ width: 22, height: 22, background: rgba(ctx.primary, 0.15), color: ctx.primary, marginTop: 1 }}>
+                <Check size={13} strokeWidth={2.5} />
+              </span>
+              <span className="text-[14px]" style={{ color: rgba(ctx.text, 0.88), lineHeight: 1.4 }}>{p}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2.5" style={{ color: rgba(ctx.text, 0.5) }}>{g.mocksLabel}</div>
+          <div className="space-y-3">
+            <Img src={ctx.asset('im1')} ctx={ctx} className="h-[122px]" rounded="rounded-xl" />
+            <Img src={ctx.asset('im2')} ctx={ctx} className="h-[122px]" rounded="rounded-xl" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 rounded-2xl px-6 py-3.5" style={{ background: rgba(ctx.primary, 0.09), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
+        <p className="text-[13.5px]" style={{ color: rgba(ctx.text, 0.9), lineHeight: 1.45 }}>{g.callout}</p>
+      </div>
+    </Shell>
+  )
+}
+
+/* ===================== DISTRIBUTION ===================== */
+function Distribution({ deck, ctx }) {
+  const d = deck.distribution
+  return (
+    <Shell deck={deck} ctx={ctx} id="distribution">
+      <Kicker ctx={ctx}>{d.kicker}</Kicker>
+      <h2 className="mt-4 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, letterSpacing: '-0.015em', color: ctx.heading }}>
+        <Accent text={d.headline} ctx={ctx} />
+      </h2>
+      <div className="mt-8 grid grid-cols-4 gap-5">
+        {(d.tiles || []).slice(0, 4).map((t, i) => (
+          <div key={i} className="rounded-2xl px-6 py-7" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 42, lineHeight: 1, color: ctx.primary }}>{t.value}</div>
+            <div className="mt-2.5 text-[12.5px] uppercase tracking-[0.1em]" style={{ color: rgba(ctx.text, 0.6) }}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-8 max-w-[900px] text-[17px]" style={{ color: rgba(ctx.text, 0.75), lineHeight: 1.6 }}>{d.blurb}</p>
+    </Shell>
+  )
+}
+
+/* ===================== NUMBERS ===================== */
+function Numbers({ deck, ctx }) {
+  const n = deck.numbers
+  return (
+    <Shell deck={deck} ctx={ctx} id="numbers">
+      <Kicker ctx={ctx}>{n.kicker}</Kicker>
+      <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, letterSpacing: '-0.015em', color: ctx.heading }}>
+        <Accent text={n.headline} ctx={ctx} />
+      </h2>
+      <p className="mt-2 text-[15px]" style={{ color: rgba(ctx.text, 0.6) }}>{n.intro}</p>
+      <div className="mt-5 grid grid-cols-4 gap-4">
+        {(n.projections || []).slice(0, 4).map((p, i) => (
+          <div key={i} className="rounded-2xl px-5 py-5" style={{ background: rgba(ctx.primary, 0.08), border: `1px solid ${rgba(ctx.primary, 0.3)}` }}>
+            <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 30, lineHeight: 1, color: ctx.primary }}>{p.value}</div>
+            <div className="mt-2 text-[11.5px] uppercase tracking-[0.08em]" style={{ color: rgba(ctx.text, 0.62) }}>{p.label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        {(n.receipts || []).slice(0, 3).map((r, i) => (
+          <div key={i} className="flex items-baseline gap-3 rounded-xl px-5 py-3.5" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <span className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 22, color: ctx.heading }}>{r.value}</span>
+            <span className="text-[12px] uppercase tracking-[0.08em]" style={{ color: rgba(ctx.text, 0.55) }}>{r.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-2xl px-6 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
+        <p className="text-[14.5px]" style={{ color: rgba(ctx.text, 0.88), lineHeight: 1.5 }}>{n.callout}</p>
+      </div>
+    </Shell>
+  )
+}
+
+/* ===================== INVESTMENT ===================== */
+function Investment({ deck, ctx }) {
+  const iv = deck.investment
+  return (
+    <Shell deck={deck} ctx={ctx} id="investment">
+      <div className="h-full grid grid-cols-[1fr_1fr] gap-12">
+        <div className="flex flex-col justify-center">
+          <Kicker ctx={ctx}>{iv.kicker}</Kicker>
+          <div className="mt-5 flex items-end gap-2">
+            <span className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 72, lineHeight: 0.95, letterSpacing: '-0.02em', color: ctx.heading }}>{iv.price}</span>
+            <span className="text-[20px] mb-2" style={{ color: rgba(ctx.text, 0.58) }}>{iv.cadence}</span>
+          </div>
+          <div className="mt-6 space-y-2.5">
+            {(iv.includes || []).map((it, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Check size={17} style={{ color: ctx.primary }} strokeWidth={2.5} />
+                <span className="text-[15.5px]" style={{ color: rgba(ctx.text, 0.9) }}>{it}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col justify-center rounded-3xl p-9"
+             style={{ background: `linear-gradient(160deg, ${rgba(ctx.primary, 0.14)}, ${rgba(ctx.chrome, 0.03)})`, border: `1px solid ${rgba(ctx.primary, 0.35)}` }}>
+          <span className="text-[13px] font-semibold uppercase tracking-[0.18em]" style={{ color: ctx.primary }}>Next Steps</span>
+          <p className="mt-4 font-semibold" style={{ fontFamily: ctx.fontHead, fontSize: 25, lineHeight: 1.34, color: ctx.heading }}>
+            <Accent text={iv.cta} ctx={ctx} />
+          </p>
+          <div className="mt-8 inline-flex items-center gap-2 self-start rounded-full px-6 py-3 text-[16px] font-semibold"
+               style={{ background: ctx.primary, color: '#fff' }}>
+            Let’s talk <ArrowRight size={18} />
+          </div>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+const BMAP = {
+  cover: Cover, concept: Concept, format: Format, integration: Integration,
+  distribution: Distribution, numbers: Numbers, investment: Investment,
+}
+
+export function BriefSlide({ id, deck }) {
+  const ctx = ctxFrom(deck)
+  const Comp = BMAP[id] || Cover
+  return (
+    <div className="slide-surface">
+      <Comp deck={deck} ctx={ctx} />
+    </div>
+  )
+}

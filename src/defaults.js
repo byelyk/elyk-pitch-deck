@@ -1,6 +1,7 @@
 import {
   Sparkles, Users, Target, Palette, Images, Lightbulb, Trophy, Layers, Route, DollarSign,
   Star, BarChart3, PieChart, Clapperboard, Smartphone, MonitorPlay, Handshake, Quote, Wand2, ListChecks, Mail,
+  ListOrdered, Share2,
 } from 'lucide-react'
 
 /* Font pairings — families are loaded in index.html */
@@ -354,5 +355,130 @@ export const DEFAULT_KIT = {
     shipName: 'Maya Chen',
     shipAddress: 'PO Box 1234, Los Angeles, CA 90001',
     note: 'For product sends & PR packages, use the address above. Please email before shipping.',
+  },
+}
+
+/* =========================================================
+   CONTENT BRIEF — a third document type: creative briefs for
+   signature series (default template: Dorm Wars x Sleepyhead)
+   ========================================================= */
+export const BRIEF_SLIDES = [
+  { id: 'cover',        name: 'Cover',            tag: 'The Series',       icon: Clapperboard },
+  { id: 'concept',      name: 'The Concept',      tag: 'Why It Works',     icon: Lightbulb },
+  { id: 'format',       name: 'The Format',       tag: 'Episode Beats',    icon: ListOrdered },
+  { id: 'integration',  name: 'Brand Map',        tag: 'Placements',       icon: Target },
+  { id: 'distribution', name: 'Distribution',     tag: 'Reach & Reuse',    icon: Share2 },
+  { id: 'numbers',      name: 'The Numbers',      tag: 'Why It Pays',      icon: BarChart3 },
+  { id: 'investment',   name: 'Investment',       tag: 'Pricing & CTA',    icon: DollarSign },
+]
+
+export const DEFAULT_BRIEF = {
+  type: 'brief',
+  brand: {
+    agencyName: 'ELYK STUDIO',
+    tagline: 'Creative Brief',
+    clientName: 'Sleepyhead',
+    primary: '#12795C',
+    secondary: '#DCEFE4',
+    headingColor: '#0E4636',
+    textColor: '#33584B',
+    footer: 'elykstudio.com · @elykstudio',
+    fontPair: 'poppins-inter',
+  },
+
+  hidden: [],
+  assets: {},
+  backgrounds: {},
+
+  cover: {
+    kicker: 'Creative Brief · A Signature Series',
+    title: 'DORM WARS',
+    subtitle: 'A national dorm-tour competition where students battle for the best room in college — and viewers crown the winner. Presented by Sleepyhead.',
+    chips: ['2 episodes / month', 'YouTube + TikTok · Reels · Shorts', 'Winner voted at rumered.com'],
+  },
+
+  concept: {
+    kicker: 'The Concept',
+    headline: 'The most *personal room in college* — turned into a show',
+    body: 'Dorm Wars takes viewers inside real dorms across the country. Students show off their setups, their favorite finds, their trophies — everything that makes a tiny room feel like home. It is the most natural window into what college life actually looks like, told through the space students care about most.',
+    points: [
+      { title: 'Dorms are personal', desc: 'Every room is a self-portrait — the most authentic showcase of college culture there is.' },
+      { title: 'Dorms are the spend center', desc: 'Students invest more in their dorm than anywhere else — it is home for over half the year.' },
+      { title: 'Dorm tours convert', desc: 'Viewers save, screenshot, and shop what they see. Featured products get bought.' },
+    ],
+    thumbsLabel: 'Past thumbnails & stills — drop in your screenshots',
+  },
+
+  format: {
+    kicker: 'The Format',
+    headline: 'Every episode, *built around the brand*',
+    steps: [
+      { title: 'Sponsor tag', tag: '0:00', desc: '“Dorm Wars is presented by Sleepyhead” — a clean billboard before the first tour.' },
+      { title: 'The tours', tag: 'Act 1', desc: 'Students walk us through their rooms — setups, favorite items, and the stories behind them.' },
+      { title: 'The interviews', tag: 'Threaded', desc: 'Quick-hit questions where sleep and comfort come up naturally — Sleepyhead included.' },
+      { title: 'The showcase', tag: 'Midpoint', desc: 'A dedicated Sleepyhead segment — the topper on a real dorm bed, honest reactions.' },
+      { title: 'The vote', tag: 'rumered.com', desc: 'Viewers vote for the best dorm at rumered.com — audience traffic we own.' },
+      { title: 'The prize', tag: 'Finale', desc: 'The winner takes home a Sleepyhead mattress topper — awarded on camera.' },
+    ],
+  },
+
+  integration: {
+    kicker: 'Brand Integration Map',
+    headline: 'Six placements, *every episode*',
+    placements: [
+      'Sponsor tag at 0:00 — the first thing every viewer hears',
+      'Midpoint product showcase — a full dedicated segment',
+      'Interview mentions — woven into real conversations',
+      'The prize — a Sleepyhead topper awarded on camera',
+      'Commission links — trackable affiliate links under every upload',
+      'Short-form cutdowns — intro, winner moment & showcase reposted as clips',
+    ],
+    mocksLabel: 'Placement mockups — drop in annotated screenshots',
+    callout: 'Every episode is a content mine: the best moments get cut into short-form and reposted across TikTok, Reels & Shorts — so Sleepyhead’s presence compounds long after the episode airs.',
+  },
+
+  distribution: {
+    kicker: 'Distribution & Repurposing',
+    headline: 'One series, *a month of content*',
+    tiles: [
+      { value: '2', label: 'Episodes / month' },
+      { value: '8–12', label: 'Short-form clips / month' },
+      { value: '3+', label: 'Platforms per clip' },
+      { value: '1', label: 'Voting hub — rumered.com' },
+    ],
+    blurb: 'Long-form lives on YouTube. Every episode is cut into shorts for TikTok, Reels, and Shorts. Voting pushes the audience to rumered.com between episodes, and commission links ride under every single upload — so the sponsorship works across the whole funnel, all month long.',
+  },
+
+  numbers: {
+    kicker: 'Why It Pays',
+    headline: 'Built to *return the investment*',
+    intro: 'Conservative projections — the real engine is trust: students buying what students show them.',
+    projections: [
+      { label: 'Projected views / episode', value: '250K+' },
+      { label: 'Projected short-form reach / mo', value: '1M+' },
+      { label: 'Trust — student creators', value: '69%' },
+      { label: 'Brand touchpoints / episode', value: '6' },
+    ],
+    receipts: [
+      { label: 'Creators', value: '10+' },
+      { label: 'Monthly views', value: '50M+' },
+      { label: 'Combined followers', value: '960K+' },
+    ],
+    callout: 'Every dollar buys placements across the episode, the clips, the votes, and the prize — and the series is an appreciating asset: Season 2 launches with Season 1’s audience already watching.',
+  },
+
+  investment: {
+    kicker: 'The Investment',
+    price: '$30,000',
+    cadence: '/ month',
+    includes: [
+      '2 full Dorm Wars episodes — produced, hosted, edited',
+      '8–12 short-form cutdowns across TikTok, Reels & Shorts',
+      'All 6 brand placements in every episode',
+      'Voting hosted at rumered.com + affiliate link setup',
+      'Prize fulfillment — toppers passed through at cost',
+      'Monthly performance report',
+    ],
+    cta: 'Dorm Wars starts when the dorms do. Lock in Season 1 before move-in week — and Sleepyhead is the name on every episode of the school year.',
   },
 }

@@ -1,18 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { DEFAULT_DECK, DEFAULT_KIT, SLIDES, KIT_SLIDES, FONT_PAIRS } from './defaults'
+import { DEFAULT_DECK, DEFAULT_KIT, DEFAULT_BRIEF, SLIDES, KIT_SLIDES, BRIEF_SLIDES, FONT_PAIRS } from './defaults'
 import { Slide } from './slides'
 import { KitSlide } from './kit-slides'
+import { BriefSlide } from './brief-slides'
 import Controls from './Controls'
 import KitControls from './kit-controls'
+import BriefControls from './brief-controls'
 import {
-  Download, RotateCcw, ChevronLeft, ChevronRight, Presentation, IdCard,
+  Download, RotateCcw, ChevronLeft, ChevronRight, Presentation, IdCard, ClipboardList,
   FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Eye, Play, X,
 } from 'lucide-react'
 
 const STORE_KEY = 'elyk-decks-v2'
 const OLD_KEY = 'elyk-deck-v1'
 
-const baseFor = (type) => (type === 'mediakit' ? DEFAULT_KIT : DEFAULT_DECK)
+const baseFor = (type) => (type === 'mediakit' ? DEFAULT_KIT : type === 'brief' ? DEFAULT_BRIEF : DEFAULT_DECK)
 
 /* Fill any missing keys from the right defaults so old saves never crash a slide */
 function mergeDeck(saved) {
@@ -75,11 +77,12 @@ export default function App() {
   const active = store.decks[store.activeId]
   const deck = active.deck
   const isKit = deck.type === 'mediakit'
+  const isBrief = deck.type === 'brief'
 
   // pick the right slide set + renderer + controls for this document type
-  const SLIDE_LIST = isKit ? KIT_SLIDES : SLIDES
-  const RenderSlide = isKit ? KitSlide : Slide
-  const ControlsComp = isKit ? KitControls : Controls
+  const SLIDE_LIST = isKit ? KIT_SLIDES : isBrief ? BRIEF_SLIDES : SLIDES
+  const RenderSlide = isKit ? KitSlide : isBrief ? BriefSlide : Slide
+  const ControlsComp = isKit ? KitControls : isBrief ? BriefControls : Controls
   const safeIdx = Math.min(idx, SLIDE_LIST.length - 1)
   const slideId = SLIDE_LIST[safeIdx].id
 
@@ -113,7 +116,7 @@ export default function App() {
     setStore((s) => ({ ...s, decks: { ...s.decks, [s.activeId]: { ...s.decks[s.activeId], name } } }))
   const createDoc = (type) => {
     const id = newId()
-    const name = type === 'mediakit' ? 'New Media Kit' : 'New Pitch'
+    const name = type === 'mediakit' ? 'New Media Kit' : type === 'brief' ? 'New Brief' : 'New Pitch'
     setStore((s) => ({ activeId: id, decks: { ...s.decks, [id]: { name, deck: baseFor(type), updatedAt: Date.now() } } }))
     setIdx(0)
   }
@@ -333,6 +336,7 @@ export default function App() {
             {[
               ['pitch', 'Pitch Deck', Presentation],
               ['mediakit', 'Media Kit', IdCard],
+              ['brief', 'Brief', ClipboardList],
             ].map(([type, label, Icon]) => {
               const on = deck.type === type
               return (
@@ -390,7 +394,7 @@ export default function App() {
             >
               {Object.entries(store.decks)
                 .sort((a, b) => b[1].updatedAt - a[1].updatedAt)
-                .map(([id, d]) => <option key={id} value={id}>{(d.deck.type === 'mediakit' ? '🪪 ' : '📊 ') + d.name}</option>)}
+                .map(([id, d]) => <option key={id} value={id}>{(d.deck.type === 'mediakit' ? '🪪 ' : d.deck.type === 'brief' ? '📋 ' : '📊 ') + d.name}</option>)}
             </select>
             <input
               value={active.name}
@@ -474,8 +478,8 @@ export default function App() {
             {/* caption */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[12px] text-neutral-500">
               {hiddenIds.includes(slideId)
-                ? <span className="text-amber-400/80">Hidden from this {isKit ? 'kit' : 'deck'}</span>
-                : <>{isKit ? 'Page' : 'Slide'} {posMap[slideId]} of {visibleSlides.length}</>}
+                ? <span className="text-amber-400/80">Hidden from this {isKit ? 'kit' : isBrief ? 'brief' : 'deck'}</span>
+                : <>{isKit || isBrief ? 'Page' : 'Slide'} {posMap[slideId]} of {visibleSlides.length}</>}
               {' — '}<span className="text-neutral-300">{SLIDE_LIST[safeIdx].name}</span>
               <span className="text-neutral-600"> · {SLIDE_LIST[safeIdx].tag}</span>
             </div>
