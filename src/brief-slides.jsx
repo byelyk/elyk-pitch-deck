@@ -207,33 +207,67 @@ function Distribution({ deck, ctx }) {
   )
 }
 
-/* ===================== NUMBERS ===================== */
+/* ===================== NUMBERS =====================
+   Split layout: PROVEN (real track record, solid treatment) on the left vs
+   PROJECTED (forecast, outlined + labelled as estimates) on the right — so a
+   finance reader can instantly tell fact from forecast. */
 function Numbers({ deck, ctx }) {
   const n = deck.numbers
+  const receipts = (n.receipts || []).slice(0, 3)
+  const projections = (n.projections || []).slice(0, 4)
   return (
     <Shell deck={deck} ctx={ctx} id="numbers">
-      <Kicker ctx={ctx}>{n.kicker}</Kicker>
-      <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, letterSpacing: '-0.015em', color: ctx.heading }}>
-        <Accent text={n.headline} ctx={ctx} />
-      </h2>
-      <p className="mt-2 text-[15px]" style={{ color: rgba(ctx.text, 0.6) }}>{n.intro}</p>
-      <div className="mt-5 grid grid-cols-4 gap-4">
-        {(n.projections || []).slice(0, 4).map((p, i) => (
-          <div key={i} className="rounded-2xl px-5 py-5" style={{ background: rgba(ctx.primary, 0.08), border: `1px solid ${rgba(ctx.primary, 0.3)}` }}>
-            <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 30, lineHeight: 1, color: ctx.primary }}>{p.value}</div>
-            <div className="mt-2 text-[11.5px] uppercase tracking-[0.08em]" style={{ color: rgba(ctx.text, 0.62) }}>{p.label}</div>
-          </div>
-        ))}
+      <div className="flex items-end justify-between gap-8">
+        <div>
+          <Kicker ctx={ctx}>{n.kicker}</Kicker>
+          <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, letterSpacing: '-0.015em', color: ctx.heading }}>
+            <Accent text={n.headline} ctx={ctx} />
+          </h2>
+        </div>
+        <p className="text-[14px] max-w-[330px] text-right pb-1.5" style={{ color: rgba(ctx.text, 0.6), lineHeight: 1.45 }}>{n.intro}</p>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        {(n.receipts || []).slice(0, 3).map((r, i) => (
-          <div key={i} className="flex items-baseline gap-3 rounded-xl px-5 py-3.5" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
-            <span className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 22, color: ctx.heading }}>{r.value}</span>
-            <span className="text-[12px] uppercase tracking-[0.08em]" style={{ color: rgba(ctx.text, 0.55) }}>{r.label}</span>
+
+      <div className="mt-6 grid grid-cols-[0.85fr_1.15fr] gap-6" style={{ height: 300 }}>
+        {/* ---- PROVEN ---- */}
+        <div className="rounded-2xl px-6 py-5 flex flex-col"
+             style={{ background: rgba(ctx.primary, 0.1), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
+          <div className="flex items-center gap-2">
+            <span className="grid place-items-center rounded-full" style={{ width: 18, height: 18, background: ctx.primary }}>
+              <Check size={11} color="#fff" strokeWidth={3} />
+            </span>
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: ctx.primary }}>Proven</span>
           </div>
-        ))}
+          <div className="mt-1 text-[12px]" style={{ color: rgba(ctx.text, 0.55) }}>What we've already built</div>
+          <div className="mt-5 flex-1 flex flex-col justify-between pb-1">
+            {receipts.map((r, i) => (
+              <div key={i} style={i > 0 ? { borderTop: `1px solid ${rgba(ctx.primary, 0.22)}`, paddingTop: 13 } : {}}>
+                <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 34, lineHeight: 1, color: ctx.heading }}>{r.value}</div>
+                <div className="mt-1 text-[11.5px] uppercase tracking-[0.1em]" style={{ color: rgba(ctx.text, 0.6) }}>{r.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ---- PROJECTED ---- */}
+        <div className="rounded-2xl px-6 py-5 flex flex-col"
+             style={{ background: rgba(ctx.chrome, 0.03), border: `1px dashed ${rgba(ctx.chrome, 0.28)}` }}>
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: rgba(ctx.text, 0.7) }}>Projected · Season 1</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full"
+                  style={{ background: rgba(ctx.chrome, 0.08), color: rgba(ctx.text, 0.5) }}>Estimates</span>
+          </div>
+          <div className="mt-5 flex-1 grid grid-cols-2 gap-x-6 gap-y-5 content-center">
+            {projections.map((p, i) => (
+              <div key={i}>
+                <div className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 38, lineHeight: 1, color: ctx.primary }}>{p.value}</div>
+                <div className="mt-1.5 text-[11.5px] uppercase tracking-[0.09em]" style={{ color: rgba(ctx.text, 0.62) }}>{p.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="mt-4 rounded-2xl px-6 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
+
+      <div className="mt-5 rounded-2xl px-6 py-4" style={{ background: rgba(ctx.chrome, 0.04), border: `1px solid ${rgba(ctx.primary, 0.4)}` }}>
         <p className="text-[14.5px]" style={{ color: rgba(ctx.text, 0.88), lineHeight: 1.5 }}>{n.callout}</p>
       </div>
     </Shell>
