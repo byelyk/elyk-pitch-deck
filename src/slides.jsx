@@ -111,9 +111,9 @@ function Shell({ deck, ctx, id, children, pad = 72 }) {
         <div className="flex items-center gap-2.5">
           {asset('agencyLogo')
             ? <img src={asset('agencyLogo')} alt="" style={{ height: 26 }} className="object-contain" />
-            : <span className="text-[15px] font-bold tracking-[0.16em] uppercase" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{deck.brand.agencyName}</span>}
+            : <span className="text-[15px] font-bold tracking-[0.16em] uppercase whitespace-nowrap" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{deck.brand.agencyName}</span>}
         </div>
-        <span className="text-[12px] font-medium tracking-[0.18em] uppercase" style={{ color: rgba(ctx.text, 0.45) }}>
+        <span className="text-[12px] font-medium tracking-[0.18em] uppercase whitespace-nowrap" style={{ color: rgba(ctx.text, 0.45) }}>
           {deck.brand.clientName} · Proposal
         </span>
       </div>
@@ -127,7 +127,7 @@ function Shell({ deck, ctx, id, children, pad = 72 }) {
       </div>
       {id !== 'vision' && deck.brand.footer && (
         <div className="absolute" style={{ right: pad, bottom: 30 }}>
-          <span className="text-[12px] font-medium tracking-[0.1em]" style={{ color: rgba(ctx.text, 0.4) }}>
+          <span className="text-[12px] font-medium tracking-[0.1em] whitespace-nowrap" style={{ color: rgba(ctx.text, 0.4) }}>
             {deck.brand.footer}
           </span>
         </div>

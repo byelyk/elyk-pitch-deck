@@ -76,30 +76,46 @@ export function ColorField({ label, value, onChange }) {
    Uploads are auto-resized to a 2000px cap and re-encoded (JPEG for photos,
    PNG kept for logos/transparency). Slides only ever display ~1920px wide,
    so this is visually lossless while keeping browser storage ~10x smaller. */
-const MAX_IMG_DIM = 2000
-function processImage(file, cb) {
-  const reader = new FileReader()
-  reader.onload = () => {
-    const src = reader.result
+const MAX_IMG_DIM = 1400   // slides render at 1280px — anything larger is wasted bytes
+
+/* Encode an already-loaded image to a data URL, downscaled to `cap`.
+   PNG is only kept when the image genuinely has transparent pixels (logos);
+   opaque PNGs — screenshots especially — become JPEG, which is ~10x smaller. */
+function encodeImage(img, cap = MAX_IMG_DIM, quality = 0.82) {
+  const scale = Math.min(1, cap / Math.max(img.width, img.height))
+  const w = Math.max(1, Math.round(img.width * scale))
+  const h = Math.max(1, Math.round(img.height * scale))
+  const c = document.createElement('canvas')
+  c.width = w; c.height = h
+  const ctx = c.getContext('2d')
+  ctx.drawImage(img, 0, 0, w, h)
+  let hasAlpha = false
+  try {
+    const d = ctx.getImageData(0, 0, w, h).data
+    for (let i = 3; i < d.length; i += 4 * 997) { if (d[i] < 250) { hasAlpha = true; break } }
+  } catch { hasAlpha = false }
+  return c.toDataURL(hasAlpha ? 'image/png' : 'image/jpeg', quality)
+}
+
+/* Re-compress a data-URL image. Returns the original if it wouldn't shrink. */
+export function compressDataURL(dataUrl, cap = MAX_IMG_DIM, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) return resolve(dataUrl)
     const img = new Image()
     img.onload = () => {
-      const scale = Math.min(1, MAX_IMG_DIM / Math.max(img.width, img.height))
-      // already small enough → keep the original bytes untouched
-      if (scale === 1 && file.size < 800 * 1024) return cb(src)
-      const c = document.createElement('canvas')
-      c.width = Math.max(1, Math.round(img.width * scale))
-      c.height = Math.max(1, Math.round(img.height * scale))
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
-      const isPng = file.type === 'image/png' // preserve logo transparency
       try {
-        cb(c.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.85))
-      } catch {
-        cb(src) // e.g. SVG or decode quirk — fall back to the original
-      }
+        const out = encodeImage(img, cap, quality)
+        resolve(out && out.length < dataUrl.length ? out : dataUrl)
+      } catch { resolve(dataUrl) }
     }
-    img.onerror = () => cb(src)
-    img.src = src
-  }
+    img.onerror = () => resolve(dataUrl)
+    img.src = dataUrl
+  })
+}
+
+function processImage(file, cb) {
+  const reader = new FileReader()
+  reader.onload = () => compressDataURL(reader.result).then(cb)
   reader.readAsDataURL(file)
 }
 

@@ -6,9 +6,10 @@ import { BriefSlide } from './brief-slides'
 import Controls from './Controls'
 import KitControls from './kit-controls'
 import BriefControls from './brief-controls'
+import { compressDataURL } from './ui'
 import {
   Download, RotateCcw, ChevronLeft, ChevronRight, Presentation, IdCard, ClipboardList,
-  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Eye, Play, X,
+  FilePlus2, Copy, Trash2, FileDown, FileUp, MonitorPlay, Loader2, EyeOff, Eye, Play, X, Wand2,
 } from 'lucide-react'
 
 const STORE_KEY = 'elyk-decks-v2'
@@ -72,6 +73,7 @@ export default function App() {
   const [exporting, setExporting] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [present, setPresent] = useState(null) // null | index into visibleSlides
+  const [optimizing, setOptimizing] = useState(false)
   const importRef = useRef(null)
 
   const active = store.decks[store.activeId]
@@ -161,18 +163,31 @@ export default function App() {
     a.click()
     URL.revokeObjectURL(a.href)
   }
+  /* Shrink every embedded image in a deck. Oversized images (multi-MB phone
+     photos / PNG screenshots) blow up the export capture, so this runs on
+     import and is available on demand for decks that are already heavy. */
+  const optimizeAssets = async (assets) => {
+    const out = {}
+    for (const [k, v] of Object.entries(assets || {})) {
+      out[k] = typeof v === 'string' && v.startsWith('data:image') ? await compressDataURL(v) : v
+    }
+    return out
+  }
+
   const importDeckFile = (file) => {
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const j = JSON.parse(reader.result)
+        const merged = mergeDeck(j.deck || j)
+        merged.assets = await optimizeAssets(merged.assets)
         const id = newId()
         setStore((s) => ({
           activeId: id,
           decks: {
             ...s.decks,
-            [id]: { name: j.name || 'Imported Pitch', deck: mergeDeck(j.deck || j), updatedAt: Date.now() },
+            [id]: { name: j.name || 'Imported Pitch', deck: merged, updatedAt: Date.now() },
           },
         }))
         setIdx(0)
@@ -181,6 +196,23 @@ export default function App() {
       }
     }
     reader.readAsText(file)
+  }
+
+  const optimizeCurrentDeck = async () => {
+    if (optimizing) return
+    setOptimizing(true)
+    try {
+      const before = JSON.stringify(deck.assets || {}).length
+      const assets = await optimizeAssets(deck.assets)
+      const after = JSON.stringify(assets).length
+      setDeck({ ...deck, assets })
+      const mb = (n) => (n * 0.75 / 1048576).toFixed(1)
+      alert(before > after
+        ? `Images optimized: ${mb(before)} MB → ${mb(after)} MB.\nExports will be faster and more reliable.`
+        : 'Images are already optimized.')
+    } finally {
+      setOptimizing(false)
+    }
   }
 
   /* ---- shared slide-capture pipeline (feeds PowerPoint + PDF exports) ---- */
@@ -409,6 +441,11 @@ export default function App() {
               <span className="mx-1 h-5 w-px bg-neutral-800" />
               <button onClick={exportDeckFile} className={mgrBtn} title="Save this doc as a file (backup / share)"><FileDown size={15} /></button>
               <button onClick={() => importRef.current?.click()} className={mgrBtn} title="Open a saved file"><FileUp size={15} /></button>
+              <span className="mx-1 h-5 w-px bg-neutral-800" />
+              <button onClick={optimizeCurrentDeck} disabled={optimizing} className={mgrBtn}
+                      title="Optimize images — shrink oversized photos so exports are fast and reliable">
+                {optimizing ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
+              </button>
               <input ref={importRef} type="file" accept=".json,application/json" className="hidden"
                      onChange={(e) => { importDeckFile(e.target.files?.[0]); e.target.value = '' }} />
             </div>
