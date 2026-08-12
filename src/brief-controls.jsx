@@ -162,6 +162,31 @@ export default function BriefControls({ deck, onChange, slideId }) {
         </>
       )}
 
+      {slideId === 'timeline' && (
+        <>
+          <IncludeToggle deck={deck} onChange={onChange} slideId="timeline" />
+          <Group title="Page · Timeline">
+            <Area label="Headline" rows={2} value={deck.timeline?.headline || ''} onChange={(v) => field('timeline', 'headline', v)} />
+            <Field label="Intro line" value={deck.timeline?.intro || ''} onChange={(v) => field('timeline', 'intro', v)} />
+            {(deck.timeline?.milestones || []).map((m, i) => (
+              <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Milestone {i + 1}</span>
+                  <Toggle label="Highlight" checked={!!m.highlight}
+                          onChange={(v) => field('timeline', 'milestones', deck.timeline.milestones.map((x, idx) => (idx === i ? { ...x, highlight: v } : x)))} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Date" value={m.date} onChange={(v) => field('timeline', 'milestones', deck.timeline.milestones.map((x, idx) => (idx === i ? { ...x, date: v } : x)))} />
+                  <Field label="Title" value={m.title} onChange={(v) => field('timeline', 'milestones', deck.timeline.milestones.map((x, idx) => (idx === i ? { ...x, title: v } : x)))} />
+                </div>
+                <Area label="Description" rows={2} value={m.desc} onChange={(v) => field('timeline', 'milestones', deck.timeline.milestones.map((x, idx) => (idx === i ? { ...x, desc: v } : x)))} />
+              </div>
+            ))}
+          </Group>
+          <BgControls deck={deck} onChange={onChange} slideId="timeline" />
+        </>
+      )}
+
       {slideId === 'distribution' && (
         <>
           <IncludeToggle deck={deck} onChange={onChange} slideId="distribution" />
@@ -193,12 +218,54 @@ export default function BriefControls({ deck, onChange, slideId }) {
         <>
           <IncludeToggle deck={deck} onChange={onChange} slideId="investment" />
           <Group title="Page · Investment">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Price" value={deck.investment.price} onChange={(v) => field('investment', 'price', v)} />
-              <Field label="Cadence" value={deck.investment.cadence} onChange={(v) => field('investment', 'cadence', v)} />
-            </div>
-            <ListEditor label="What’s included" items={deck.investment.includes} onChange={(v) => field('investment', 'includes', v)} />
-            <Area label="Next steps (CTA)" rows={4} value={deck.investment.cta} onChange={(v) => field('investment', 'cta', v)} />
+            {(() => {
+              const iv = deck.investment
+              const tiers = iv.tiers || []
+              const on = tiers.length > 0
+              const setTiers = (v) => field('investment', 'tiers', v)
+              const upd = (i, k, val) => setTiers(tiers.map((t, idx) => (idx === i ? { ...t, [k]: val } : t)))
+              const starter = [
+                { name: 'Launch', listValue: '', price: '$10,000', cadence: '/ campaign', save: '', recommended: false, features: [] },
+                { name: 'Amplify', listValue: '', price: '$17,500', cadence: '/ campaign', save: '', recommended: true, features: [] },
+                { name: 'Takeover', listValue: '', price: '$25,000', cadence: '/ campaign', save: '', recommended: false, features: [] },
+              ]
+              return (
+                <>
+                  <Toggle label={on ? 'Pricing tiers (a range)' : 'Single price'} checked={on} onChange={(v) => setTiers(v ? starter : [])} />
+                  {!on && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Price" value={iv.price} onChange={(v) => field('investment', 'price', v)} />
+                        <Field label="Cadence" value={iv.cadence} onChange={(v) => field('investment', 'cadence', v)} />
+                      </div>
+                      <ListEditor label="What’s included" items={iv.includes} onChange={(v) => field('investment', 'includes', v)} />
+                    </>
+                  )}
+                  {on && (
+                    <>
+                      <Field label="Headline" value={iv.headline || ''} onChange={(v) => field('investment', 'headline', v)} />
+                      {tiers.map((t, i) => (
+                        <div key={i} className="rounded-xl border border-neutral-800 p-3 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Tier {i + 1}</span>
+                            <Toggle label="Recommended" checked={!!t.recommended}
+                                    onChange={(v) => setTiers(tiers.map((x, idx) => ({ ...x, recommended: idx === i ? v : false })))} />
+                          </div>
+                          <Field label="Name" value={t.name} onChange={(v) => upd(i, 'name', v)} />
+                          <div className="grid grid-cols-3 gap-2">
+                            <Field label="À-la-carte" value={t.listValue} onChange={(v) => upd(i, 'listValue', v)} />
+                            <Field label="Price" value={t.price} onChange={(v) => upd(i, 'price', v)} />
+                            <Field label="Save" value={t.save} onChange={(v) => upd(i, 'save', v)} />
+                          </div>
+                          <ListEditor label="Includes" items={t.features || []} onChange={(v) => upd(i, 'features', v)} />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <Area label="Bottom line / CTA" rows={3} value={iv.cta} onChange={(v) => field('investment', 'cta', v)} />
+                </>
+              )
+            })()}
           </Group>
           <BgControls deck={deck} onChange={onChange} slideId="investment" />
         </>

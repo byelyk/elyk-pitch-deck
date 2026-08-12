@@ -368,6 +368,7 @@ export const BRIEF_SLIDES = [
   { id: 'format',       name: 'The Format',       tag: 'Episode Beats',    icon: ListOrdered },
   { id: 'integration',  name: 'Brand Map',        tag: 'Placements',       icon: Target },
   { id: 'distribution', name: 'Distribution',     tag: 'Reach & Reuse',    icon: Share2 },
+  { id: 'timeline',     name: 'Timeline',         tag: 'Rollout',          icon: Route },
   { id: 'numbers',      name: 'The Numbers',      tag: 'Why It Pays',      icon: BarChart3 },
   { id: 'investment',   name: 'Investment',       tag: 'Pricing & CTA',    icon: DollarSign },
 ]
@@ -449,6 +450,20 @@ export const DEFAULT_BRIEF = {
     blurb: 'Long-form lives on YouTube. Every episode is cut into shorts for TikTok, Reels, and Shorts. Voting pushes the audience to rumered.com between episodes, and commission links ride under every single upload — so the sponsorship works across the whole funnel, all month long.',
   },
 
+  timeline: {
+    kicker: 'Rollout',
+    headline: 'From greenlight to *live in four weeks*',
+    intro: 'Dates flex to your side — the one thing worth protecting is the launch window.',
+    milestones: [
+      { date: 'Week of Aug 17', title: 'Greenlight & onboarding', desc: 'Contract signed, creators confirmed, brief and hooks locked.', highlight: false },
+      { date: 'Aug 24 – Sep 7', title: 'Pre-production & filming', desc: 'Sit-down filmed, campus interviews shot across multiple days.', highlight: false },
+      { date: 'Week of Sep 8', title: 'Edit & approvals', desc: 'First cut delivered for your review, one round of revisions built in.', highlight: false },
+      { date: 'Week of Sep 15', title: 'YouTube video goes live', desc: 'The feature drops with tracked link and code in description + pinned comment.', highlight: true },
+      { date: 'Week of Sep 22', title: 'Short-form rollout complete', desc: 'Every cutdown live across TikTok, Reels and Shorts as collab posts.', highlight: false },
+      { date: 'Week of Sep 29', title: 'Ads, repurposing & report', desc: 'Assets handed over for paid media, plus your full performance report.', highlight: false },
+    ],
+  },
+
   numbers: {
     kicker: 'Why It Pays',
     headline: 'Built to *return the investment*',
@@ -469,6 +484,8 @@ export const DEFAULT_BRIEF = {
 
   investment: {
     kicker: 'The Investment',
+    headline: 'The Investment',
+    tiers: [],
     price: '$30,000',
     cadence: '/ month',
     includes: [

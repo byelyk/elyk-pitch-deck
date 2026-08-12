@@ -207,6 +207,53 @@ function Distribution({ deck, ctx }) {
   )
 }
 
+
+/* ===================== TIMELINE ===================== */
+function Timeline({ deck, ctx }) {
+  const t = deck.timeline || {}
+  const ms = (t.milestones || []).slice(0, 6)
+  return (
+    <Shell deck={deck} ctx={ctx} id="timeline">
+      <div className="flex items-end justify-between gap-8">
+        <div>
+          <Kicker ctx={ctx}>{t.kicker}</Kicker>
+          <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, letterSpacing: '-0.015em', color: ctx.heading }}>
+            <Accent text={t.headline} ctx={ctx} />
+          </h2>
+        </div>
+        {t.intro && <p className="text-[13.5px] max-w-[320px] text-right pb-1.5" style={{ color: rgba(ctx.text, 0.6), lineHeight: 1.45 }}>{t.intro}</p>}
+      </div>
+      <div className="mt-6 relative">
+        <div className="absolute" style={{ left: 9, top: 10, bottom: 10, width: 2, background: rgba(ctx.chrome, 0.14) }} />
+        <div className="space-y-2">
+          {ms.map((m, i) => {
+            const hi = !!m.highlight
+            return (
+              <div key={i} className="relative flex items-start gap-4" style={{ paddingLeft: 34 }}>
+                <span className="absolute rounded-full" style={{
+                  left: 3, top: 12, width: 14, height: 14,
+                  background: hi ? ctx.primary : rgba(ctx.chrome, 0.25),
+                  boxShadow: hi ? `0 0 0 4px ${rgba(ctx.primary, 0.2)}` : 'none',
+                }} />
+                <div className="flex-1 rounded-xl px-5 py-2.5" style={{
+                  background: hi ? rgba(ctx.primary, 0.1) : rgba(ctx.chrome, 0.035),
+                  border: `1px solid ${hi ? rgba(ctx.primary, 0.4) : rgba(ctx.chrome, 0.09)}`,
+                }}>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-[11.5px] font-bold uppercase tracking-[0.1em] whitespace-nowrap" style={{ color: hi ? ctx.primary : rgba(ctx.text, 0.5), minWidth: 118 }}>{m.date}</span>
+                    <span className="text-[16px] font-bold" style={{ fontFamily: ctx.fontHead, color: ctx.heading }}>{m.title}</span>
+                  </div>
+                  <p className="mt-0.5 text-[13px]" style={{ color: rgba(ctx.text, 0.65), lineHeight: 1.4, paddingLeft: 130 }}>{m.desc}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
 /* ===================== NUMBERS =====================
    Split layout: PROVEN (real track record, solid treatment) on the left vs
    PROJECTED (forecast, outlined + labelled as estimates) on the right — so a
@@ -277,6 +324,58 @@ function Numbers({ deck, ctx }) {
 /* ===================== INVESTMENT ===================== */
 function Investment({ deck, ctx }) {
   const iv = deck.investment
+  const tiers = iv.tiers || []
+
+  if (tiers.length) {
+    return (
+      <Shell deck={deck} ctx={ctx} id="investment">
+        <Kicker ctx={ctx}>{iv.kicker}</Kicker>
+        <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, letterSpacing: '-0.015em', color: ctx.heading }}>
+          <Accent text={iv.headline || 'The Investment'} ctx={ctx} />
+        </h2>
+        <div className="mt-5 grid grid-cols-3 gap-5" style={{ height: 372 }}>
+          {tiers.slice(0, 3).map((t, i) => {
+            const rec = !!t.recommended
+            return (
+              <div key={i} className="relative rounded-2xl px-6 pt-6 pb-5 flex flex-col"
+                   style={{ background: rec ? rgba(ctx.primary, 0.1) : rgba(ctx.chrome, 0.04),
+                            border: `1px solid ${rec ? rgba(ctx.primary, 0.5) : rgba(ctx.chrome, 0.1)}` }}>
+                {rec && (
+                  <span className="absolute -top-2.5 left-6 text-[10.5px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full whitespace-nowrap"
+                        style={{ background: ctx.primary, color: '#fff' }}>Recommended</span>
+                )}
+                <div className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: rec ? ctx.primary : rgba(ctx.text, 0.6) }}>{t.name}</div>
+                {t.listValue && <div className="mt-2 text-[14px] line-through" style={{ color: rgba(ctx.text, 0.4) }}>{t.listValue}</div>}
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 36, lineHeight: 1, color: ctx.heading }}>{t.price}</span>
+                  {t.cadence && <span className="text-[13px] mb-1" style={{ color: rgba(ctx.text, 0.5) }}>{t.cadence}</span>}
+                </div>
+                {t.save && (
+                  <span className="mt-2.5 self-start text-[11.5px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
+                        style={{ background: rgba(ctx.primary, 0.15), color: ctx.primary }}>{t.save}</span>
+                )}
+                <div className="mt-3.5 pt-3.5 space-y-1.5" style={{ borderTop: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+                  {(t.features || []).slice(0, 7).map((f, j) => (
+                    <div key={j} className="flex items-start gap-2" style={{ fontSize: 12.5, lineHeight: 1.32, color: rgba(ctx.text, 0.85) }}>
+                      <Check size={13} strokeWidth={2.5} style={{ color: ctx.primary, marginTop: 2, flexShrink: 0 }} /> {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {iv.cta && (
+          <div className="mt-4 pt-3.5 text-center" style={{ borderTop: `1px solid ${rgba(ctx.chrome, 0.1)}` }}>
+            <p className="text-[15px] font-medium mx-auto max-w-[1000px]" style={{ color: rgba(ctx.text, 0.85), lineHeight: 1.4 }}>
+              <Accent text={iv.cta} ctx={ctx} />
+            </p>
+          </div>
+        )}
+      </Shell>
+    )
+  }
+
   return (
     <Shell deck={deck} ctx={ctx} id="investment">
       <div className="h-full grid grid-cols-[1fr_1fr] gap-12">
@@ -313,7 +412,7 @@ function Investment({ deck, ctx }) {
 
 const BMAP = {
   cover: Cover, concept: Concept, format: Format, integration: Integration,
-  distribution: Distribution, numbers: Numbers, investment: Investment,
+  distribution: Distribution, timeline: Timeline, numbers: Numbers, investment: Investment,
 }
 
 export function BriefSlide({ id, deck }) {
