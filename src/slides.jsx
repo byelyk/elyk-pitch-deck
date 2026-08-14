@@ -436,7 +436,9 @@ function Investment({ deck, ctx }) {
         <h2 className="mt-3 font-bold" style={{ fontFamily: ctx.fontHead, fontSize: 40, letterSpacing: '-0.015em', color: ctx.heading }}>
           <Accent text={iv.headline || 'The Investment'} ctx={ctx} />
         </h2>
-        <div className="mt-5 grid grid-cols-3 gap-5" style={{ height: 388 }}>
+        <div className="mt-5 grid gap-5 mx-auto" style={{ height: 388,
+             gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, minmax(0,1fr))`,
+             maxWidth: tiers.length === 2 ? 880 : '100%' }}>
           {tiers.slice(0, 3).map((t, i) => {
             const rec = !!t.recommended
             return (

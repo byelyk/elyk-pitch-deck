@@ -304,6 +304,29 @@ export default function App() {
     }
   }
 
+  /* ?load=/file.json — open a saved doc straight from a URL */
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get('load')
+    if (!url) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const j = await (await fetch(url)).json()
+        if (cancelled) return
+        const merged = mergeDeck(j.deck || j)
+        merged.assets = await optimizeAssets(merged.assets)
+        const id = newId()
+        setStore((s) => ({
+          activeId: id,
+          decks: { ...s.decks, [id]: { name: j.name || 'Opened Doc', deck: merged, updatedAt: Date.now() } },
+        }))
+        setIdx(0)
+        window.history.replaceState({}, '', window.location.pathname)
+      } catch (e) { console.warn('?load failed:', e) }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
   // testing hooks
   useEffect(() => { window.__exportPptx = exportPptx; window.__exportPdf = exportPdf })
 
