@@ -3,3 +3,6 @@ dist/
 .DS_Store
 *.local
 .vite/
+
+# staged files for ?load=
+public/*.json
